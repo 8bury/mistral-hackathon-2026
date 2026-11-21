@@ -19,6 +19,30 @@ interface Props {
  * Full-screen live camera preview. The frame is only *read* (snapshot) when
  * the user asks a question — no continuous video is sent anywhere.
  */
+/** No camera (desktop / denied): a stand-in frame so the UI flow is still demoable. */
+function demoFrame(): Frame | null {
+  const width = 768;
+  const height = 1024;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const g = ctx.createLinearGradient(0, 0, 0, height);
+  g.addColorStop(0, '#8aa4c0');
+  g.addColorStop(0.6, '#5b6b7c');
+  g.addColorStop(1, '#2d3540');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = '#3b4450';
+  ctx.fillRect(width * 0.47, height * 0.6, width * 0.06, height * 0.4); // plinth
+  ctx.font = `${width * 0.26}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🐉', width * 0.51, height * 0.46);
+  return { dataUrl: canvas.toDataURL('image/jpeg', 0.8), width, height };
+}
+
 const CameraView = forwardRef<CameraHandle, Props>(function CameraView({ onError }, ref) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -57,7 +81,7 @@ const CameraView = forwardRef<CameraHandle, Props>(function CameraView({ onError
   useImperativeHandle(ref, () => ({
     captureFrame: () => {
       const video = videoRef.current;
-      if (!video || video.videoWidth === 0) return null;
+      if (!video || video.videoWidth === 0) return demoFrame();
       // Cap the frame size — grounding works on a downscaled image and the
       // payload stays small. The FULL uncropped frame is what the model sees;
       // Overlay applies the screen crop on top of these dimensions.
