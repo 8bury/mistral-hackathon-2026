@@ -1,13 +1,14 @@
+// Must stay the first import: modules below (e.g. voxtral.ts) read
+// process.env at load time, so .env has to be applied before they run.
+import './env';
+
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
 
 import { askRouter } from './routes/ask';
 import { recapRouter } from './routes/recap';
 import { sttRouter } from './routes/stt';
 import { ttsRouter } from './routes/tts';
-
-dotenv.config();
 
 const app = express();
 
