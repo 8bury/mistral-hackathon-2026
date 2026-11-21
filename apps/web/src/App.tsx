@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ask, AskError, MOCK, recap, speechToText, textToSpeech } from './api';
 import type { AnswerLanguage, AskResponse, Language, Persona, UserLocation } from './api';
-import type { FaceFeatures } from './faceFeatures';
+import { analyzeFace, type FaceFeatures } from './faceFeatures';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
@@ -140,6 +140,30 @@ export default function App() {
   });
   const [faceOpen, setFaceOpen] = useState(false);
   const { heading, needsPermission, requestMotion } = useHeading();
+
+  // A face photo stored before feature analysis existed still gets a
+  // generated vector character: decode it once and derive the features.
+  useEffect(() => {
+    if (!face || faceFeatures) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, 256, 256);
+      const feats = analyzeFace(ctx.getImageData(0, 0, 256, 256));
+      setFaceFeatures(feats);
+      store.set('vysta.faceFeatures', JSON.stringify(feats));
+    };
+    img.src = face;
+    return () => {
+      cancelled = true;
+    };
+  }, [face, faceFeatures]);
 
   // Gallery media: an uploaded photo becomes the frozen frame directly; a video
   // plays as the scene and its current frame is captured when the user talks.

@@ -32,6 +32,15 @@ const SKIN = '#f0c39a';
 const SKIN_LIGHT = '#f6d3ab';
 const GLASSES = '#2b2f38';
 
+/** Darken a #rrggbb colour by factor f (voxel shade strips, hood lining). */
+function shadeHex(hex: string, f: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.round(((n >> 16) & 255) * f);
+  const g = Math.round(((n >> 8) & 255) * f);
+  const b = Math.round((n & 255) * f);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
 export default function Figurine({ id, faceImage, features, size = 44 }: Props) {
   return (
     <svg
@@ -217,6 +226,10 @@ function Generic({ faceImage, features }: { faceImage: string | null; features: 
   const clipId = useId();
   const skin = features?.skinTone ?? SKIN;
   const hair = features?.hairColor ?? '#9aa0a6';
+  const iris = features?.eyeColor ?? '#2e2620';
+  const cloth = features?.shirtColor ?? '#5f6b7a';
+  const clothDark = shadeHex(cloth, 0.78);
+  const clothLine = shadeHex(cloth, 0.62);
   // Head geometry follows the detected face shape; legacy photo mode keeps
   // the original fixed head.
   const head = !features
@@ -237,15 +250,16 @@ function Generic({ faceImage, features }: { faceImage: string | null; features: 
       <rect x="33" y="56" width="7" height="7" fill="#3d4652" />
       <rect x="22.5" y="61.5" width="9.5" height="4" rx="2" fill="#20242e" />
       <rect x="31.5" y="61.5" width="9.5" height="4" rx="2" fill="#20242e" />
-      {/* hood behind head, with a yellow rim to characterise "You" */}
-      <path d="M18 40 Q17 26 32 26 Q47 26 46 40 L 44 40 Q45 30 32 30 Q19 30 20 40 Z" fill="#525d6b" />
+      {/* hood behind head, with a yellow rim to characterise "You";
+          the cloth colour comes from the scanned shirt */}
+      <path d="M18 40 Q17 26 32 26 Q47 26 46 40 L 44 40 Q45 30 32 30 Q19 30 20 40 Z" fill={features ? clothDark : '#525d6b'} />
       <path d="M20 40 Q19 30 32 30 Q45 30 44 40" fill="none" stroke="#ffd166" strokeWidth="1.6" opacity="0.9" />
-      {/* hoodie body + arms */}
-      <rect x="20" y="38" width="24" height="20" rx="3" fill="#5f6b7a" />
-      <rect x="14" y="40" width="7" height="11" rx="3" fill="#5f6b7a" />
-      <rect x="43" y="40" width="7" height="11" rx="3" fill="#5f6b7a" />
-      <line x1="32" y1="38" x2="32" y2="58" stroke="#48525f" />
-      <path d="M26 52 H38" stroke="#48525f" fill="none" />
+      {/* hoodie body + arms in the scanned shirt colour */}
+      <rect x="20" y="38" width="24" height="20" rx="3" fill={features ? cloth : '#5f6b7a'} />
+      <rect x="14" y="40" width="7" height="11" rx="3" fill={features ? cloth : '#5f6b7a'} />
+      <rect x="43" y="40" width="7" height="11" rx="3" fill={features ? cloth : '#5f6b7a'} />
+      <line x1="32" y1="38" x2="32" y2="58" stroke={features ? clothLine : '#48525f'} />
+      <path d="M26 52 H38" stroke={features ? clothLine : '#48525f'} fill="none" />
       {/* head */}
       <rect x={head.x} y={head.y} width={head.w} height={head.h} rx={head.rx} fill={features ? skin : '#d8d8de'} />
       <Shade x={head.x + head.w - 4} y={head.y} w={4} h={head.h} rx={2} />
@@ -266,14 +280,24 @@ function Generic({ faceImage, features }: { faceImage: string | null; features: 
               )}
             </g>
           )}
-          {/* eyes + brows */}
-          <circle cx="28" cy={eyeY} r="1.7" fill="#20242e" stroke="none" />
-          <circle cx="36" cy={eyeY} r="1.7" fill="#20242e" stroke="none" />
-          <line x1="25.5" y1={eyeY - 3.6} x2="30" y2={eyeY - 4} strokeWidth="1.6" strokeLinecap="round" />
-          <line x1="34" y1={eyeY - 4} x2="38.5" y2={eyeY - 3.6} strokeWidth="1.6" strokeLinecap="round" />
-          {/* mouth (light ink over a beard) */}
+          {/* eyes (scanned iris colour + pupil) + brows (scanned thickness) */}
+          {[28, 36].map((cx) => (
+            <g key={cx} stroke="none">
+              <circle cx={cx} cy={eyeY} r="1.9" fill={iris} />
+              <circle cx={cx} cy={eyeY} r="0.9" fill="#20242e" />
+            </g>
+          ))}
+          <line x1="25.5" y1={eyeY - 3.6} x2="30" y2={eyeY - 4} strokeWidth={features.browStyle === 'thick' ? 2.6 : 1.2} strokeLinecap="round" />
+          <line x1="34" y1={eyeY - 4} x2="38.5" y2={eyeY - 3.6} strokeWidth={features.browStyle === 'thick' ? 2.6 : 1.2} strokeLinecap="round" />
+          {/* mouth width from the scan (light ink over a beard) */}
           <path
-            d={`M28.5 ${mouthY} Q32 ${mouthY + 2.6} 35.5 ${mouthY}`}
+            d={
+              features.mouthWidth === 'wide'
+                ? `M26.5 ${mouthY} Q32 ${mouthY + 3} 37.5 ${mouthY}`
+                : features.mouthWidth === 'narrow'
+                  ? `M29.5 ${mouthY} Q32 ${mouthY + 2.2} 34.5 ${mouthY}`
+                  : `M28.5 ${mouthY} Q32 ${mouthY + 2.6} 35.5 ${mouthY}`
+            }
             fill="none"
             stroke={features.facialHair === 'beard' ? '#f6f6f6' : '#20242e'}
             strokeWidth="1.6"
