@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react';
 
+import { analyzeFace, type FaceFeatures } from '../faceFeatures';
+
 interface Props {
   /** 'create' the first time, 'change' when re-scanning an existing figurine. */
   mode: 'create' | 'change';
-  onCapture: (dataUrl: string) => void;
+  /** dataUrl of the posterized capture + the facial features extracted from it. */
+  onCapture: (dataUrl: string, features: FaceFeatures) => void;
   onClose: () => void;
   onError: (message: string) => void;
 }
@@ -11,7 +14,9 @@ interface Props {
 /**
  * Front-camera face scan for the editable "You" mode. A scan line sweeps the
  * live preview while the camera reads the face; Capture turns the centered
- * square snapshot into the figurine's face texture.
+ * square snapshot into the figurine's face and extracts facial features
+ * (skin tone, hair, glasses, facial hair, face shape) so the "You"
+ * figurine can embody the visitor as a custom character.
  */
 export default function FaceCapture({ mode, onCapture, onClose, onError }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -104,6 +109,10 @@ export default function FaceCapture({ mode, onCapture, onClose, onError }: Props
       }
     }
     ctx.putImageData(img, 0, 0);
+    // Extract facial features from the posterized capture so the "You"
+    // figurine can be personified (skin, hair, glasses, facial hair, shape).
+    // analyzeFace is read-only — it never mutates the pixels.
+    const features = analyzeFace(img);
     // Pixelate: downscale to 64px and upscale with smoothing off -> chunky retro avatar.
     const small = document.createElement('canvas');
     small.width = 64;
@@ -116,7 +125,7 @@ export default function FaceCapture({ mode, onCapture, onClose, onError }: Props
       ctx.drawImage(small, 0, 0, 256, 256);
     }
     // PNG keeps the pixel edges crisp (JPEG would blur them).
-    onCapture(canvas.toDataURL('image/png'));
+    onCapture(canvas.toDataURL('image/png'), features);
   };
 
   return (

@@ -1,4 +1,5 @@
 import type { Language, Persona } from '../api';
+import type { FaceFeatures } from '../faceFeatures';
 import { PERSONAS } from '../personas';
 import Figurine from './Figurines';
 
@@ -9,12 +10,14 @@ interface Props {
   onLanguage: (l: Language) => void;
   onClose: () => void;
   face: string | null;
+  /** Analyzed face-scan features for the personalized "You" figurine. */
+  faceFeatures: FaceFeatures | null;
   onFace: () => void;
   /** First-launch onboarding variant. */
   welcome?: boolean;
 }
 
-export default function GuideSheet({ persona, language, onPick, onLanguage, onClose, welcome, face, onFace }: Props) {
+export default function GuideSheet({ persona, language, onPick, onLanguage, onClose, welcome, face, faceFeatures, onFace }: Props) {
   return (
     <div className={welcome ? 'welcome' : 'sheet-backdrop'} onClick={welcome ? undefined : onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -31,7 +34,7 @@ export default function GuideSheet({ persona, language, onPick, onLanguage, onCl
           ))}
         </div>
         <button className="me-card" onClick={onFace}>
-          <span className="me-card__fig"><Figurine id="generic" faceImage={face} size={44} /></span>
+          <span className="me-card__fig"><Figurine id="generic" faceImage={face} features={faceFeatures} size={44} /></span>
           <span className="me-card__body">
             <span className="me-card__name">{language === 'es' ? 'Tu figura' : 'Your figurine'}</span>
             <span className="me-card__tag">
