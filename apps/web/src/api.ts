@@ -42,19 +42,40 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Audio blob -> transcript text. */
-export async function speechToText(audio: Blob): Promise<string> {
+/** Audio blob -> transcript text. `language` is the UI language, used by Voxtral to boost accuracy. */
+export async function speechToText(audio: Blob, language?: Language): Promise<string> {
   if (MOCK) {
     await delay(600);
     return 'Why is the dragon holding a shield?';
   }
-  const res = await fetch(`${API_URL}/api/stt`, {
+  const query = language ? `?language=${encodeURIComponent(language)}` : '';
+  const res = await fetch(`${API_URL}/api/stt${query}`, {
     method: 'POST',
     headers: { 'Content-Type': audio.type || 'application/octet-stream' },
     body: audio,
   });
   if (!res.ok) throw new Error(`STT failed: ${res.status}`);
   return (await res.json()).text;
+}
+
+/**
+ * Text -> spoken answer as a playable object URL (Voxtral TTS, persona voice).
+ * Returns null in mock mode so the frontend stays offline-capable.
+ */
+export async function textToSpeech(
+  text: string,
+  persona: Persona,
+  language: Language,
+): Promise<string | null> {
+  if (MOCK) return null;
+  const res = await fetch(`${API_URL}/api/tts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, persona, language }),
+  });
+  if (!res.ok) throw new Error(`TTS failed: ${res.status}`);
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }
 
 /** Frame + question -> grounded answer. */

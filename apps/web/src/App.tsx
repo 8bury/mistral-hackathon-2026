@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-import { ask, speechToText } from './api';
+import { ask, speechToText, textToSpeech } from './api';
 import type { AskResponse, Language, Persona } from './api';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls from './components/Controls';
@@ -39,7 +39,7 @@ export default function App() {
     async (audio: Blob) => {
       setBusy(true);
       try {
-        const question = await speechToText(audio);
+        const question = await speechToText(audio, languageRef.current);
         setTranscript(question);
         const res = await ask({
           frame: frameRef.current?.dataUrl ?? '',
@@ -49,8 +49,11 @@ export default function App() {
           tourId,
         });
         setResult(res);
-        if (res.audioUrl) {
-          const player = new Audio(res.audioUrl);
+        // /api/ask returns audioUrl once wired; until then, speak the answer
+        // directly via Voxtral TTS so the voice loop works end-to-end.
+        const audioUrl = res.audioUrl ?? (await textToSpeech(res.answerText, personaRef.current, languageRef.current));
+        if (audioUrl) {
+          const player = new Audio(audioUrl);
           player.play().catch(() => setError('Audio playback was blocked — interact with the page to enable sound.'));
         }
       } catch (e) {
