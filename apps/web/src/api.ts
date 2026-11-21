@@ -38,6 +38,8 @@ export interface AskResponse {
 }
 
 const MOCK = import.meta.env.VITE_MOCK_API !== 'false';
+// Mock only /api/ask (agents not wired yet) while STT/TTS hit the real server.
+const MOCK_ASK = MOCK || import.meta.env.VITE_MOCK_ASK === 'true';
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -80,7 +82,7 @@ export async function textToSpeech(
 
 /** Frame + question -> grounded answer. */
 export async function ask(req: AskRequest): Promise<AskResponse> {
-  if (MOCK) {
+  if (MOCK_ASK) {
     await delay(900);
     return {
       box: { x: 380, y: 300, width: 260, height: 320 },
