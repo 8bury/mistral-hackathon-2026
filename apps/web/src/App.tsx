@@ -230,7 +230,7 @@ export default function App() {
   const voiceWith = useCallback(async (text: string, voicePersona: Persona) => {
     if (MOCK) return; // mock mode has no TTS; fakeSpeak covers the read-along UI
     try {
-      const url = await textToSpeech(text, voicePersona, answerLanguageRef.current);
+      const url = await textToSpeech(text, voicePersona, languageRef.current);
       if (!url) return;
       stopAudio();
       const player = new Audio(url);
