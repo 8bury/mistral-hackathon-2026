@@ -64,15 +64,49 @@ writeFileSync(framePage, `<html><body style="margin:0;width:${W}px;height:${H}px
 }
 
 // 2) Drive the real app.
-const { proc, cdp } = await launch(9342, ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+// --enable-unsafe-swiftshader: software WebGL so the MapLibre street map can render headless.
+const { proc, cdp } = await launch(9342, ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--enable-unsafe-swiftshader',
   `--use-file-for-fake-video-capture=${join(tmpdir(), 'vysta-scene.mjpeg')}`]);
 await cdp.send('Page.enable');
 await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+// Fake GPS at the Temple Bar dragon boundary marker (Fleet Street), so the live map, the
+// nearest-landmark widget and the mock answer (the dragon) all agree.
+await cdp.send('Browser.grantPermissions', { permissions: ['geolocation'], origin: new URL(APP).origin }).catch(() => {});
+await cdp.send('Emulation.setGeolocationOverride', { latitude: 51.5136, longitude: -0.1115, accuracy: 20 });
+
+/** Screenshot one element (padded), e.g. a guide figurine for the deck. */
+async function shotEl(selector, index, name, pad = 6) {
+  const expr = `(() => { const el = document.querySelectorAll(${JSON.stringify(selector)})[${index}];
+    if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height }; })()`;
+  const b = (await evalJs(cdp, expr)).result.value;
+  if (!b) return;
+  const clip = { x: b.x - pad, y: b.y - pad, width: b.w + pad * 2, height: b.h + pad * 2, scale: 1 };
+  const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', clip });
+  writeFileSync(join(OUT, `${name}.png`), Buffer.from(data, 'base64'));
+  console.log('captured', name);
+}
 
 // Onboarding (fresh storage → welcome sheet, default persona = child).
 await goto(cdp, APP, 2500);
 await shot(cdp, 'onboarding');
+
+// One image per guide figurine, for the deck's persona slide.
+for (const [i, id] of ['child', 'architect', 'historian', 'you'].entries()) await shotEl('.guides .guide__avatar', i, `fig-${id}`);
+
+// The 'You' guide (if this build has it): select it and write a style.
+const youCard = `[...document.querySelectorAll('.guide')].find((g) => /Your Guide/.test(g.textContent))`;
+if ((await evalJs(cdp, `!!${youCard}`)).result.value) {
+  await evalJs(cdp, `${youCard}.click(); true`);
+  await sleep(600);
+  await evalJs(cdp, `(() => {
+    const t = document.querySelector('.you-style textarea');
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Explain it like a football commentator: short, dramatic, one fun fact.');
+    t.dispatchEvent(new Event('input', { bubbles: true }));
+    return true; })()`);
+  await sleep(500);
+  await shot(cdp, 'onboarding-you');
+}
 
 // Live camera + dock as the Architect.
 await evalJs(cdp, `localStorage.setItem('vysta.onboarded','1'); localStorage.setItem('vysta.persona','architect'); true`);
@@ -89,12 +123,14 @@ await shot(cdp, 'answer');
 
 // Two follow-ups add stops to the walk, then the map sheet → "Your walk" → recap.
 const clickText = (t) => evalJs(cdp, `[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(t)})?.click(); true`);
-await clickText('What is it made of?'); await sleep(3500);
-await clickText('Who designed it?'); await sleep(3500);
-await evalJs(cdp, `(document.querySelector('.place-widget') ?? document.querySelector('.minimap')).click(); true`); await sleep(1200);
+const tapChip = () => evalJs(cdp, `document.querySelector('.chips .chip')?.click(); true`);
+await tapChip(); await sleep(3500);
+await tapChip(); await sleep(3500);
+await evalJs(cdp, `(document.querySelector('.place-widget') ?? document.querySelector('.minimap')).click(); true`);
+await sleep(6000); // let the street tiles load
 await shot(cdp, 'map');
 await evalJs(cdp, `document.querySelectorAll('.map-top .seg button')[1].click(); true`); await sleep(800);
-await clickText('Recap my walk'); await clickText('See walk recap'); await sleep(2500);
+await clickText('Recap my walk'); await clickText('See walk recap'); await sleep(6000);
 await shot(cdp, 'recap');
 
 cdp.close(); proc.kill();
