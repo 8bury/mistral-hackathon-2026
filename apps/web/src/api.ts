@@ -51,7 +51,7 @@ export interface AskResponse {
 }
 
 // Mocks are OFF by default — opt in with VITE_MOCK_API=true.
-const MOCK = import.meta.env.VITE_MOCK_API === 'true';
+export const MOCK = import.meta.env.VITE_MOCK_API === 'true';
 // Mock only /api/ask (agents not wired yet) while STT/TTS hit the real server.
 const MOCK_ASK = MOCK || import.meta.env.VITE_MOCK_ASK === 'true';
 // Empty = same origin (prod container, or the Vite dev proxy).

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ask, recap, speechToText, textToSpeech } from './api';
+import { ask, MOCK, recap, speechToText, textToSpeech } from './api';
 import type { AnswerLanguage, AskResponse, Language, Persona, UserLocation } from './api';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
@@ -201,9 +201,21 @@ export default function App() {
 
   const handleAudio = useCallback(
     async (audio: Blob) => {
+      // A quick tap or a failed mic yields no audio; /api/stt would 400 on it.
+      if (!MOCK && audio.size < 1000) {
+        setError(languageRef.current === 'es' ? 'Mantén pulsado el botón mientras hablas.' : 'Hold the button while you speak.');
+        setPhase('idle');
+        return;
+      }
       setPhase('thinking');
       try {
-        const question = await speechToText(audio, languageRef.current);
+        const question = (await speechToText(audio, languageRef.current)).trim();
+        // Silence transcribes to ''; /api/ask would 400 on an empty question.
+        if (!question) {
+          setError(languageRef.current === 'es' ? 'No te he oído. Mantén pulsado y vuelve a hablar.' : "I didn't catch that. Hold the button and try again.");
+          setPhase('idle');
+          return;
+        }
         await answerQuestion(question);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -240,7 +252,10 @@ export default function App() {
       .getUserMedia({ audio: true })
       .then((audioStream) => {
         if (!pressedRef.current) {
+          // Released before the mic opened: nothing was recorded.
           audioStream.getTracks().forEach((t) => t.stop());
+          setError(languageRef.current === 'es' ? 'Mantén pulsado el botón mientras hablas.' : 'Hold the button while you speak.');
+          setPhase('idle');
           return;
         }
         // Mic level for the ring animation.
@@ -275,8 +290,13 @@ export default function App() {
       })
       .catch(() => {
         pressedRef.current = false;
-        // No mic (desktop demo): fall through to the mock transcript path.
-        void handleAudio(new Blob());
+        if (MOCK) {
+          // No mic (desktop demo): fall through to the mock transcript path.
+          void handleAudio(new Blob());
+          return;
+        }
+        setError(languageRef.current === 'es' ? 'Micrófono no disponible. Permite el acceso al micrófono.' : 'Microphone unavailable. Allow microphone access for this site.');
+        setPhase('idle');
       });
   }, [handleAudio]);
 

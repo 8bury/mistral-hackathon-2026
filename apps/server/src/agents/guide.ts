@@ -45,29 +45,38 @@ export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
     { type: 'text' as const, text: question },
   ];
 
-  const res = await mistral().chat.complete({
-    model: MODELS.guide,
-    // Low variance plus a fixed seed keeps repeated questions stable while
-    // the message history still lets genuine follow-ups evolve naturally.
-    temperature: 0.2,
-    randomSeed: 42,
-    maxTokens: 500,
-    // mistral-large reasons by default and can starve the text chunk — keep it low.
-    reasoningEffort: 'low',
-    messages: [
-      { role: 'system', content: guideSystemPrompt({ persona, language, landmark, location }) },
-      // Filter legacy/previously stored blank entries as well as new ones.
-      ...history.filter((h) => h.content.trim().length > 0).map((h) => ({ role: h.role, content: h.content })),
-      { role: 'user' as const, content: userContent },
-    ],
-  });
+  const attempt = async (retry: boolean) => {
+    const res = await mistral().chat.complete({
+      model: MODELS.guide,
+      // Low variance plus a fixed seed keeps repeated questions stable while
+      // the message history still lets genuine follow-ups evolve naturally.
+      temperature: 0.2,
+      randomSeed: retry ? 43 : 42,
+      // Reasoning can eat the whole budget and leave no text; the retry gets more room.
+      maxTokens: retry ? 1000 : 500,
+      // mistral-large reasons by default and can starve the text chunk — keep it low.
+      reasoningEffort: 'low',
+      messages: [
+        { role: 'system', content: guideSystemPrompt({ persona, language, landmark, location }) },
+        // Filter legacy/previously stored blank entries as well as new ones.
+        ...history.filter((h) => h.content.trim().length > 0).map((h) => ({ role: h.role, content: h.content })),
+        { role: 'user' as const, content: userContent },
+      ],
+    });
 
-  // SDK v3: choices[0].message, or choices[0].messages[0] in some response shapes.
-  const choice = res.choices[0] as unknown as {
-    message?: { content?: unknown };
-    messages?: Array<{ content?: unknown }>;
+    // SDK v3: choices[0].message, or choices[0].messages[0] in some response shapes.
+    const choice = res.choices[0] as unknown as {
+      message?: { content?: unknown };
+      messages?: Array<{ content?: unknown }>;
   };
-  const answerText = contentToText(choice?.message?.content ?? choice?.messages?.[0]?.content).trim();
+  return contentToText(choice?.message?.content ?? choice?.messages?.[0]?.content).trim();
+  };
+
+  let answerText = await attempt(false);
+  if (!answerText) {
+    console.warn('[guide] empty model response, retrying once');
+    answerText = await attempt(true);
+  }
   if (!answerText) {
     throw new Error('Guide model returned no text response; please retry the request.');
   }
