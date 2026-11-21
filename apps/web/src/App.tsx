@@ -113,6 +113,10 @@ export default function App() {
   // English guide answer. `auto` follows the language detected in the user's
   // transcription; picking a language in the guide sheet is an override.
   const [answerLanguage, setAnswerLanguage] = useState<AnswerLanguage>('auto');
+  // Free-text style for the 'you' persona — the visitor writes how answers should sound.
+  const [customStyle, setCustomStyle] = useState<string>(() => store.get('vysta.customStyle') ?? '');
+  const customStyleRef = useRef(customStyle);
+  customStyleRef.current = customStyle;
   const personaRef = useRef(persona);
   const languageRef = useRef(language);
   const answerLanguageRef = useRef(answerLanguage);
@@ -206,6 +210,7 @@ export default function App() {
   }, []);
 
   useEffect(() => store.set('vysta.persona', persona), [persona]);
+  useEffect(() => store.set('vysta.customStyle', customStyle), [customStyle]);
   useEffect(() => store.set('vysta.lang', language), [language]);
 
   const stopAudio = () => {
@@ -278,6 +283,7 @@ export default function App() {
       const req = {
         question,
         persona: personaRef.current,
+        customStyle: personaRef.current === 'you' ? customStyleRef.current.trim() || undefined : undefined,
         language: answerLanguageRef.current,
         tourId,
         location: locationRef.current,
@@ -679,6 +685,8 @@ export default function App() {
           face={face}
           faceFeatures={faceFeatures}
           onFace={() => setFaceOpen(true)}
+          customStyle={customStyle}
+          onCustomStyle={setCustomStyle}
           onClose={() => {
             if (welcome) store.set('vysta.onboarded', '1');
             setWelcome(false);
