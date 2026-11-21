@@ -21,13 +21,13 @@ export function docsRouter(_req: Request, res: Response): void {
   </head>
   <body>
     <h1>Vysta backend test</h1>
-    <p>Upload a landmark photo and send it to <code>POST /api/ask</code>.</p>
+    <p>Upload photos or one short MP4/MOV/WebM clip and send it to <code>POST /api/ask</code>. Later questions can reuse the same Tour ID without uploading again.</p>
     <form id="ask-form">
-      <label>Photo <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" required /></label>
+      <label>Photos or a short video <input id="photo" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" multiple /></label>
       <label>Question <textarea id="question" required>What landmark is this? Tell me its history.</textarea></label>
       <div class="row">
         <label>Persona <select id="persona"><option value="historian" selected>Historian</option><option value="child">Child</option><option value="architect">Architect</option></select></label>
-        <label>Language <select id="language"><option value="en" selected>English</option><option value="es">Spanish</option></select></label>
+        <label>Language <select id="language"><option value="auto" selected>Match question language</option><option value="en">English</option><option value="es">Spanish</option><option value="zh">Chinese</option></select></label>
       </div>
       <label>Tour ID <input id="tour-id" value="browser-test" required /></label>
       <button id="submit" type="submit">Ask the guide</button>
@@ -40,22 +40,22 @@ export function docsRouter(_req: Request, res: Response): void {
       const submit = document.querySelector('#submit');
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const file = document.querySelector('#photo').files[0];
-        if (!file) return;
+        const files = [...document.querySelector('#photo').files];
         submit.disabled = true;
         result.textContent = 'Sending image to the guide…';
         try {
-          const frame = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(file);
-          });
+          const frames = await Promise.all(files.map((file) => new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(reader.error);
+              reader.readAsDataURL(file);
+            })));
           const response = await fetch('/api/ask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              frame,
+              frame: frames[0],
+              frames: frames.slice(1),
               question: document.querySelector('#question').value,
               persona: document.querySelector('#persona').value,
               language: document.querySelector('#language').value,
@@ -63,6 +63,7 @@ export function docsRouter(_req: Request, res: Response): void {
             }),
           });
           const data = await response.json();
+          if (!response.ok) throw new Error(data.message || data.error || 'Request failed');
           result.textContent = JSON.stringify(data, null, 2);
         } catch (error) {
           result.textContent = 'Request failed: ' + (error instanceof Error ? error.message : String(error));

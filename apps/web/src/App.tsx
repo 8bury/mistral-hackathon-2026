@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ask, recap, speechToText, textToSpeech } from './api';
-import type { AskResponse, Language, Persona, UserLocation } from './api';
+import type { AnswerLanguage, AskResponse, Language, Persona, UserLocation } from './api';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
@@ -95,14 +95,21 @@ export default function App() {
   // Latest GPS fix (accuracy in metres). Stays null until a fix arrives or when
   // permission is denied; the app keeps working and simply sends no location.
   const locationRef = useRef<UserLocation | null>(null);
+  const [location, setLocation] = useState<UserLocation | null>(null);
 
   const [tourId] = useState(newTourId);
   const [persona, setPersona] = useState<Persona>((store.get('vysta.persona') as Persona) ?? 'child');
   const [language, setLanguage] = useState<Language>((store.get('vysta.lang') as Language) ?? 'en');
+  // The display language has an English default, but that must not force an
+  // English guide answer. `auto` follows the language detected in the user's
+  // transcription; picking a language in the guide sheet is an override.
+  const [answerLanguage, setAnswerLanguage] = useState<AnswerLanguage>('auto');
   const personaRef = useRef(persona);
   const languageRef = useRef(language);
+  const answerLanguageRef = useRef(answerLanguage);
   personaRef.current = persona;
   languageRef.current = language;
+  answerLanguageRef.current = answerLanguage;
   const theme = personaById(persona);
 
   const [welcome, setWelcome] = useState(() => !store.get('vysta.onboarded'));
@@ -138,11 +145,15 @@ export default function App() {
         const { latitude, longitude, accuracy } = pos.coords;
         if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(accuracy)) {
           locationRef.current = { lat: latitude, lng: longitude, accuracy };
+          setLocation(locationRef.current);
         }
       },
       (err) => {
         // Keep the last good fix on transient timeouts/unavailability; drop it only if revoked.
-        if (err.code === err.PERMISSION_DENIED) locationRef.current = null;
+        if (err.code === err.PERMISSION_DENIED) {
+          locationRef.current = null;
+          setLocation(null);
+        }
       },
       { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 },
     );
@@ -188,7 +199,7 @@ export default function App() {
         frame: frameRef.current?.dataUrl ?? '',
         question,
         persona: personaRef.current,
-        language: languageRef.current,
+        language: answerLanguageRef.current,
         tourId,
         location: locationRef.current,
       });
@@ -388,7 +399,7 @@ export default function App() {
 
   return (
     <div className="app" data-persona={persona}>
-      <CameraView ref={cameraRef} onError={() => {}} />
+      <CameraView ref={cameraRef} onError={setError} />
       {mediaKind === 'video' && mediaUrl && !frozenFrame && (
         <video
           ref={galleryVideoRef}
@@ -440,6 +451,7 @@ export default function App() {
           stops={stops}
           heading={heading}
           face={face}
+          location={location}
           onRecap={() =>
             recap(
               tourId,
@@ -511,7 +523,10 @@ export default function App() {
           persona={persona}
           language={language}
           onPick={setPersona}
-          onLanguage={setLanguage}
+          onLanguage={(nextLanguage) => {
+            setLanguage(nextLanguage);
+            setAnswerLanguage(nextLanguage);
+          }}
           face={face}
           onFace={() => setFaceOpen(true)}
           onClose={() => {

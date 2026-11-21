@@ -56,6 +56,7 @@ export async function groundFrame(
   const res = await mistral().chat.complete({
     model: MODELS.grounding,
     temperature: 0,
+    randomSeed: 42,
     maxTokens: 300,
     responseFormat: { type: 'json_object' },
     messages: [
