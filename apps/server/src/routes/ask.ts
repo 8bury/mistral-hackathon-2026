@@ -4,6 +4,8 @@ import { Request, Response } from 'express';
  * POST /api/ask
  * Body (contract TBD — packages/shared will own these types):
  *   { frame: base64Jpeg, question: string, persona, language, tourId }
+ *   language: 'en' | 'es' — the client sends the concrete language it got
+ *   from /api/stt (i.e. 'auto' is already resolved by STT detection).
  * Response:
  *   { box, point, landmarkId, answerText, audioUrl }
  *

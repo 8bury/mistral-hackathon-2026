@@ -1,4 +1,4 @@
-import type { Language, Persona } from '../api';
+import type { DetectedLanguage, Language, Persona } from '../api';
 
 interface Props {
   persona: Persona;
@@ -6,6 +6,8 @@ interface Props {
   recording: boolean;
   busy: boolean;
   transcript: string;
+  /** Present only in 'auto' mode — the language STT detected for the last utterance. */
+  detectedLanguage?: DetectedLanguage | null;
   answer: string;
   onPersonaChange: (p: Persona) => void;
   onLanguageChange: (l: Language) => void;
@@ -26,6 +28,7 @@ export default function Controls(props: Props) {
     recording,
     busy,
     transcript,
+    detectedLanguage,
     answer,
     onPersonaChange,
     onLanguageChange,
@@ -59,13 +62,16 @@ export default function Controls(props: Props) {
           </button>
         ))}
         <div style={{ flex: 1 }} />
-        {(['en', 'es'] as Language[]).map((l) => (
+        {(['auto', 'en', 'es'] as Language[]).map((l) => (
           <button key={l} onClick={() => onLanguageChange(l)} style={chipStyle(language === l)}>
-            {l.toUpperCase()}
+            {l === 'auto' ? '✦ AUTO' : l.toUpperCase()}
           </button>
         ))}
       </div>
 
+      {language === 'auto' && detectedLanguage && (
+        <div style={{ fontSize: 12, opacity: 0.7 }}>Detected language: {detectedLanguage.toUpperCase()}</div>
+      )}
       {transcript && <div style={{ fontSize: 13, opacity: 0.85 }}>“{transcript}”</div>}
       {answer && <div style={{ fontSize: 15, lineHeight: 1.4 }}>{answer}</div>}
 

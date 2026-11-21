@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { ask, speechToText } from './api';
-import type { AskResponse, Language, Persona } from './api';
+import type { AskResponse, DetectedLanguage, Language, Persona } from './api';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls from './components/Controls';
 import Overlay from './components/Overlay';
@@ -31,6 +31,8 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [transcript, setTranscript] = useState('');
+  // Set when language === 'auto': the concrete language STT detected.
+  const [detectedLanguage, setDetectedLanguage] = useState<DetectedLanguage | null>(null);
   const [result, setResult] = useState<AskResponse | null>(null);
   const [frozenFrame, setFrozenFrame] = useState<Frame | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,13 +41,17 @@ export default function App() {
     async (audio: Blob) => {
       setBusy(true);
       try {
-        const question = await speechToText(audio);
-        setTranscript(question);
+        const stt = await speechToText(audio, languageRef.current);
+        setTranscript(stt.text);
+        // In auto mode, answer in whatever language the STT engine detected.
+        const effectiveLanguage: DetectedLanguage =
+          languageRef.current === 'auto' ? stt.language : languageRef.current;
+        setDetectedLanguage(languageRef.current === 'auto' ? stt.language : null);
         const res = await ask({
           frame: frameRef.current?.dataUrl ?? '',
-          question,
+          question: stt.text,
           persona: personaRef.current,
-          language: languageRef.current,
+          language: effectiveLanguage,
           tourId,
         });
         setResult(res);
@@ -153,6 +159,7 @@ export default function App() {
         recording={recording}
         busy={busy}
         transcript={transcript}
+        detectedLanguage={detectedLanguage}
         answer={result?.answerText ?? ''}
         onPersonaChange={setPersona}
         onLanguageChange={setLanguage}

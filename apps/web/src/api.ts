@@ -6,7 +6,10 @@
 // from there in both web and server.
 
 export type Persona = 'child' | 'architect' | 'historian';
-export type Language = 'en' | 'es';
+/** 'auto' = let the STT engine detect the spoken language. */
+export type Language = 'auto' | 'en' | 'es';
+/** A concrete language — what 'auto' resolves to after STT detection. */
+export type DetectedLanguage = Exclude<Language, 'auto'>;
 
 /** Normalized 0..1000, Le Chonk convention. */
 export interface Box2D {
@@ -42,19 +45,34 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Audio blob -> transcript text. */
-export async function speechToText(audio: Blob): Promise<string> {
+export interface SttResult {
+  text: string;
+  /** Concrete language — detected server-side when language === 'auto'. */
+  language: DetectedLanguage;
+}
+
+/** Audio blob -> transcript + resolved language (autodetect when 'auto'). */
+export async function speechToText(audio: Blob, language: Language): Promise<SttResult> {
   if (MOCK) {
     await delay(600);
-    return 'Why is the dragon holding a shield?';
+    // Mock detection: pretend the engine heard English or Spanish at random.
+    const detected: DetectedLanguage =
+      language === 'auto' ? (Math.random() < 0.5 ? 'en' : 'es') : language;
+    return {
+      text:
+        detected === 'es'
+          ? '¿Por qué el dragón sostiene un escudo?'
+          : 'Why is the dragon holding a shield?',
+      language: detected,
+    };
   }
-  const res = await fetch(`${API_URL}/api/stt`, {
+  const res = await fetch(`${API_URL}/api/stt?lang=${language}`, {
     method: 'POST',
     headers: { 'Content-Type': audio.type || 'application/octet-stream' },
     body: audio,
   });
   if (!res.ok) throw new Error(`STT failed: ${res.status}`);
-  return (await res.json()).text;
+  return res.json();
 }
 
 /** Frame + question -> grounded answer. */
@@ -79,6 +97,8 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
 }
 
 function mockAnswer(persona: Persona, language: Language): string {
+  // 'auto' is resolved to a concrete language via STT before ask() is called;
+  // if it ever arrives here, fall through to the English answers.
   if (language === 'es') {
     return {
       child: '¡Mira! El dragón sostiene un escudo porque protege la City de Londres.',
