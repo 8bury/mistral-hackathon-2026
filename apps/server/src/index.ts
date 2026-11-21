@@ -20,8 +20,9 @@ loadEnv();
 const app = express();
 
 app.use(cors());
-// Frames arrive as base64 JPEGs — allow generous payloads.
-app.use(express.json({ limit: '15mb' }));
+// Images and short videos arrive as base64 data URLs. Video extraction itself
+// is capped at 25 MiB in lib/video.ts.
+app.use(express.json({ limit: '35mb' }));
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ai-city-guide-server' });
