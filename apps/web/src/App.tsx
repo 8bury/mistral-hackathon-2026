@@ -145,7 +145,7 @@ export default function App() {
       const frame = cameraRef.current?.captureFrame() ?? null;
       if (!frame) {
         pressedRef.current = false;
-        setError('Could not capture a camera frame — check camera permission.');
+        setError('Could not capture a camera frame. Check camera permission.');
         return;
       }
       frameRef.current = frame;
@@ -262,7 +262,7 @@ export default function App() {
           <span>{theme.name[language]}</span>
           <span className="guide-chip__lang">{language.toUpperCase()}</span>
         </button>
-        {frozenFrame && <span className="frozen-tag">● {language === 'es' ? 'Congelado' : 'Frozen'}</span>}
+        {frozenFrame && <span className="frozen-tag">{language === 'es' ? 'Congelado' : 'Frozen'}</span>}
       </header>
 
       {error && (
