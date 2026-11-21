@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ask, speechToText, textToSpeech } from './api';
+import { ask, recap, speechToText, textToSpeech } from './api';
 import type { AskResponse, Language, Persona } from './api';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
@@ -10,6 +10,7 @@ import Icon from './components/Icon';
 import MiniMap from './components/MiniMap';
 import Overlay from './components/Overlay';
 import { personaById } from './personas';
+import { cropThumb, type Stop } from './walk';
 
 function newTourId(): string {
   // crypto.randomUUID is undefined over plain HTTP (LAN dev server) — fall back.
@@ -67,6 +68,7 @@ export default function App() {
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playKey, setPlayKey] = useState(0);
+  const [stops, setStops] = useState<Stop[]>([]);
 
   useEffect(() => store.set('vysta.persona', persona), [persona]);
   useEffect(() => store.set('vysta.lang', language), [language]);
@@ -125,6 +127,15 @@ export default function App() {
       // Fallback reading pace when there is no audio (mock / TTS failure).
       setSpeechMs(res.answerText.split(/\s+/).length * 320);
       setResult(res);
+      const frame = frameRef.current;
+      if (frame) {
+        void cropThumb(frame, res.box).then((thumb) =>
+          setStops((s) => [
+            ...s,
+            { id: `${Date.now()}`, time: Date.now(), thumb, question, answer: res.answerText, landmarkId: res.landmarkId },
+          ]),
+        );
+      }
       setPhase('answer');
       navigator.vibrate?.([10, 40, 10]);
 
@@ -278,7 +289,18 @@ export default function App() {
       </header>
 
       {phase !== 'listening' && phase !== 'thinking' && (
-        <MiniMap language={language} focusId={result?.landmarkId ?? null} />
+        <MiniMap
+          language={language}
+          focusId={result?.landmarkId ?? null}
+          stops={stops}
+          onRecap={() =>
+            recap(
+              tourId,
+              stops.map((s) => ({ landmarkId: s.landmarkId, question: s.question, answerText: s.answer })),
+              language,
+            )
+          }
+        />
       )}
 
       {error && (
