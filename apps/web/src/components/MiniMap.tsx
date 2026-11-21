@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 
 import type { Stop } from '../walk';
 
 import type { Language, UserLocation } from '../api';
 import type { FaceFeatures } from '../faceFeatures';
+import { BANK, fmtDistance as fmt, metres, placesNear, type LatLng, type Place } from '../places';
 import Figurine from './Figurines';
 import Icon from './Icon';
 
 /**
- * Mock map: a hand-drawn SVG of the City, offline and deterministic for the
- * demo. Coordinates are approximate; data/landmarks.json has no locations yet.
+ * Offline fallback map: a hand-drawn SVG of the City, used when the live
+ * MapLibre map (LiveMap) cannot load. Coordinates are approximate.
  */
 const BOUNDS = { west: -0.116, east: -0.076, north: 51.518, south: 51.506 };
 const W = 1000;
@@ -20,23 +21,17 @@ const project = (lat: number, lng: number) => ({
   y: ((BOUNDS.north - lat) / (BOUNDS.north - BOUNDS.south)) * H,
 });
 
-const PLACES = [
-  { id: 'st-pauls', name: "St Paul's Cathedral", lat: 51.5138, lng: -0.0984 },
-  { id: 'leadenhall-market', name: 'Leadenhall Market', lat: 51.5128, lng: -0.0834 },
-  { id: 'dragon-boundary', name: 'Dragon boundary marker', lat: 51.5113, lng: -0.1112 },
-].map((p) => ({ ...p, ...project(p.lat, p.lng) }));
-
-type Place = (typeof PLACES)[number];
-type Me = { lat: number; lng: number; x: number; y: number };
-
-/** Mock "you are here": outside Bank station, then beside your latest stop. */
-const BANK: Me = { lat: 51.5133, lng: -0.089, ...project(51.5133, -0.089) };
+/** Whether a position falls on (or near) the drawn area. */
+const onDrawnMap = (l: LatLng) => {
+  const { x, y } = project(l.lat, l.lng);
+  return x > -W * 0.25 && x < W * 1.25 && y > -H * 0.25 && y < H * 1.25;
+};
 
 /** Visited places in walk order, without consecutive repeats. */
-function routeOf(stops: Stop[]): Place[] {
+function routeOf(stops: Stop[], places: Place[]): Place[] {
   const out: Place[] = [];
   for (const s of stops) {
-    const p = PLACES.find((pl) => pl.id === s.landmarkId);
+    const p = places.find((pl) => pl.id === s.landmarkId);
     if (p && out.at(-1)?.id !== p.id) out.push(p);
   }
   return out;
@@ -59,15 +54,24 @@ const ROADS_MINOR = [
   'M120,240 L130,300', // Temple
 ];
 
-const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-  const dLat = (b.lat - a.lat) * 111_320;
-  const dLng = (b.lng - a.lng) * 111_320 * Math.cos((a.lat * Math.PI) / 180);
-  return Math.hypot(dLat, dLng);
-};
-const fmt = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
+interface MapProps {
+  places: Place[];
+  focusId: string | null;
+  labels: boolean;
+  me: LatLng;
+  route: Place[];
+  heading: number;
+  face: string | null;
+  faceFeatures: FaceFeatures | null;
+  onPick?: (id: string) => void;
+}
 
-function MapArt({ focusId, span, labels, me, route, heading, face, faceFeatures }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[]; heading: number; face: string | null; faceFeatures: FaceFeatures | null }) {
-  const ME = me;
+function MapArt({ places, focusId, labels, me, route, heading, face, faceFeatures }: MapProps) {
+  const span = labels ? 560 : 320;
+  const PLACES = places.map((p) => ({ ...p, ...project(p.lat, p.lng) }));
+  // A visitor far outside the drawn City is shown at the demo spot instead.
+  const here = onDrawnMap(me) ? me : BANK;
+  const ME = { ...here, ...project(here.lat, here.lng) };
   const focus = PLACES.find((p) => p.id === focusId) ?? ME;
   const order = (id: string) => route.findIndex((p) => p.id === id) + 1;
   return (
@@ -87,7 +91,7 @@ function MapArt({ focusId, span, labels, me, route, heading, face, faceFeatures 
           </>
         )}
         {route.length > 1 && (
-          <polyline className="m-route" points={route.map((p) => `${p.x},${p.y}`).join(' ')} style={{ strokeWidth: labels ? 6 : 9 }} />
+          <polyline className="m-route" points={route.map((p) => project(p.lat, p.lng)).map((p) => `${p.x},${p.y}`).join(' ')} style={{ strokeWidth: labels ? 6 : 9 }} />
         )}
         {PLACES.map((p) => {
           const n = order(p.id);
@@ -132,15 +136,32 @@ interface Props {
   face: string | null;
   /** Analyzed face-scan features for the personalized "You" figurine. */
   faceFeatures: FaceFeatures | null;
-  /** Live GPS fix; drawn on the map when it falls inside the mapped area. */
+  /** Live GPS fix; "you are here" on the map, anywhere in the world. */
   location: UserLocation | null;
 }
 
-/** Real GPS is used for "you are here" only within this margin of the map. */
-const onMap = (l: UserLocation) => {
-  const { x, y } = project(l.lat, l.lng);
-  return x > -W * 0.25 && x < W * 1.25 && y > -H * 0.25 && y < H * 1.25;
-};
+type LiveMapComponent = ComponentType<MapProps & { onFail: () => void }>;
+let liveMapLoad: Promise<LiveMapComponent> | null = null;
+const loadLiveMap = () => (liveMapLoad ??= import('./LiveMap').then((m) => m.default));
+
+/** The live street map, or the drawn map while it loads, offline, or if it fails. */
+function MapView(props: MapProps) {
+  const [Live, setLive] = useState<LiveMapComponent | null>(null);
+  const [failed, setFailed] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+  useEffect(() => {
+    if (failed) return;
+    let alive = true;
+    loadLiveMap().then(
+      (C) => alive && setLive(() => C),
+      () => alive && setFailed(true),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [failed]);
+  if (failed || !Live) return <MapArt {...props} />;
+  return <Live {...props} onFail={() => setFailed(true)} />;
+}
 
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -152,19 +173,21 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
   const [recapBusy, setRecapBusy] = useState(false);
   const es = language === 'es';
 
-  const route = routeOf(stops);
-  const last = route.at(-1);
-  const gps = location && onMap(location) ? location : null;
-  const me: Me = gps
-    ? { lat: gps.lat, lng: gps.lng, ...project(gps.lat, gps.lng) }
-    : last
-      ? { lat: last.lat, lng: last.lng, x: last.x + 18, y: last.y + 22 }
+  // Real GPS wherever the visitor is; without a fix, beside the latest stop or at the demo spot.
+  const lastStop = [...stops].reverse().find((s) => s.landmarkId);
+  const anchor: LatLng = location ?? BANK;
+  const places = placesNear(anchor);
+  const lastPlace = places.find((p) => p.id === lastStop?.landmarkId);
+  const me: LatLng = location
+    ? { lat: location.lat, lng: location.lng }
+    : lastPlace
+      ? { lat: lastPlace.lat - 0.0002, lng: lastPlace.lng + 0.0002 }
       : BANK;
-  // Outside the City: say how far away the visitor is instead of faking it silently.
-  const farAway = location && !gps ? metres(location, BANK) : null;
-  const sorted = [...PLACES].sort((a, b) => metres(me, a) - metres(me, b));
+  const route = routeOf(stops, places);
+  const sorted = [...places].sort((a, b) => metres(me, a) - metres(me, b));
   const selected = picked ?? focusId;
-  const nameOf = (id: string | null) => PLACES.find((p) => p.id === id)?.name ?? (es ? 'Sin lugar' : 'Unplaced');
+  const nameOf = (id: string | null) => places.find((p) => p.id === id)?.name ?? (es ? 'Sin lugar' : 'Unplaced');
+  const mapProps = { places, me, route, heading, face, faceFeatures };
 
   const doRecap = async () => {
     setRecapBusy(true);
@@ -180,13 +203,13 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
   return (
     <>
       <button className="minimap" onClick={() => setOpen(true)} aria-label={es ? 'Abrir mapa' : 'Open map'}>
-        <MapArt focusId={focusId} span={320} labels={false} me={me} route={route} heading={heading} face={face} faceFeatures={faceFeatures} />
+        <MapView {...mapProps} focusId={focusId} labels={false} />
         {stops.length > 0 && <span className="minimap__count">{stops.length}</span>}
       </button>
 
       {open && (
         <div className="map-sheet">
-          <MapArt focusId={selected} span={560} labels me={me} route={route} heading={heading} face={face} faceFeatures={faceFeatures} />
+          <MapView {...mapProps} focusId={selected} labels onPick={(id) => { setPicked(id); setTab('nearby'); }} />
           <div className="map-top">
             <div className="seg" role="tablist">
               <button role="tab" aria-selected={tab === 'nearby'} className={tab === 'nearby' ? 'is-on' : ''} onClick={() => setTab('nearby')}>
@@ -203,11 +226,11 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
           </div>
 
           <div className="map-list">
-            {farAway != null && (
+            {!location && (
               <p className="map-note">
                 {es
-                  ? `Estás a ${fmt(farAway)} de la City de Londres: el mapa muestra una posición de demostración.`
-                  : `You're ${fmt(farAway)} from the City of London, so the map shows a demo position.`}
+                  ? 'Sin acceso a tu ubicación: el mapa muestra una posición de demostración en la City de Londres.'
+                  : "Location is off, so the map shows a demo position in the City of London."}
               </p>
             )}
             {tab === 'nearby' &&
