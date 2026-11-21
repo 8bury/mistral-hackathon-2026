@@ -42,14 +42,17 @@ highlighted."
 ---
 
 ## 4 — Who · personas
-On screen: *Same dragon. Four travellers. Four ways to hear it.* The 8-year-old → Little
+On screen: *Same dragon. Every traveller hears it their way.* The 8-year-old → Little
 Soldier · the architecture student → The Architect · the history buff → The Historian ·
-the visitor abroad → any guide in Español. Each card has the traveller's question and the
-guide's sample answer (from the app's mock answers).
+the visitor abroad → any guide in Español · anyone, their way → **Your Guide** (you write
+how it answers, e.g. "explain it like a football commentator"). Each card has the
+traveller's question and the guide's sample answer (from the app's mock answers); the
+Your Guide card explains that the note sets the tone but can't change the facts.
 
 **Say:** "The same facts land differently for different people. A child wants wonder, a
 student wants materials and intent, a history buff wants patrons and dates, and a visitor
-wants it in their own language. You pick a guide; each has its own voice, tone and look."
+wants it in their own language. And if none of those fit, you write your own guide: tell
+it how to answer, and it does, without changing the facts."
 
 ---
 
@@ -74,10 +77,11 @@ for this answer let you dig in with one tap."
 ---
 
 ## 7 — What · the walk
-On screen: *Every question becomes a stop on your walk.* Nearest-landmark widget · route ·
-recap page · Share my walk; map and recap screens.
+On screen: *Every question becomes a stop on your walk.* Nearest-landmark widget · live
+street map that follows your GPS · recap page · Share my walk; map and recap screens.
 
-**Say:** "Every question becomes a stop. The map shows your route, and at the end the recap
+**Say:** "Every question becomes a stop. A live street map follows your GPS and draws your
+route, and at the end the recap
 gives you stats, a timeline and your guide's summary, ready to share. That's what you take
 home."
 
@@ -141,7 +145,7 @@ end-to-end latency yet; don't quote a number we haven't measured.
 ---
 
 ## 11 — Proof · built at the hackathon
-On screen: full voice loop · 3 guides × 2 languages · GPS-aware grounding · gallery
+On screen: full voice loop · 4 guides (incl. one you write) × 2 languages · GPS-aware grounding · gallery
 photos & video · AI follow-ups · map + walk recap · "You" figurine from a face scan ·
 offline mock mode · one-container deploy.
 
