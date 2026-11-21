@@ -45,6 +45,10 @@ function demoFrame(): Frame | null {
 
 const CameraView = forwardRef<CameraHandle, Props>(function CameraView({ onError }, ref) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Keep the latest callback in a ref so a new onError identity doesn't
+  // restart the stream (App re-renders many times a second from the compass).
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -66,9 +70,14 @@ const CameraView = forwardRef<CameraHandle, Props>(function CameraView({ onError
           void videoRef.current.play();
         }
       })
-      .catch(() => {
-        onError(
-          'Camera unavailable. On a phone, serve the app over HTTPS (ngrok / tunnel) and grant camera permission.',
+      .catch((e: unknown) => {
+        const name = e instanceof Error ? e.name : '';
+        onErrorRef.current(
+          name === 'NotAllowedError'
+            ? 'Camera permission denied. Allow camera access for this site in your browser settings.'
+            : name === 'NotReadableError'
+              ? 'Camera is busy. Close other apps using the camera and reload.'
+              : `Camera unavailable${name ? ` (${name})` : ''}. Open the app over HTTPS and allow camera access.`,
         );
       });
 
@@ -76,7 +85,7 @@ const CameraView = forwardRef<CameraHandle, Props>(function CameraView({ onError
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [onError]);
+  }, []);
 
   useImperativeHandle(ref, () => ({
     captureFrame: () => {

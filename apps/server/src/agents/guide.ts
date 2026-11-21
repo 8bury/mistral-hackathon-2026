@@ -47,7 +47,10 @@ export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
 
   const res = await mistral().chat.complete({
     model: MODELS.guide,
-    temperature: 0.7,
+    // Low variance plus a fixed seed keeps repeated questions stable while
+    // the message history still lets genuine follow-ups evolve naturally.
+    temperature: 0.2,
+    randomSeed: 42,
     maxTokens: 500,
     // mistral-large reasons by default and can starve the text chunk — keep it low.
     reasoningEffort: 'low',

@@ -3,7 +3,8 @@
 // apps/web/src/api.ts.
 
 export type Persona = 'child' | 'architect' | 'historian';
-export type Language = 'en' | 'es';
+/** BCP-47 language tag such as en, es, zh, or auto. */
+export type Language = string;
 
 /** Normalized 0..1000, Le Chonk convention. */
 export interface Box2D {
@@ -26,7 +27,8 @@ export interface UserLocation {
 }
 
 export interface AskRequest {
-  frame: string; // base64 JPEG snapshot captured at push-to-talk (data URL or raw base64)
+  /** Optional after the first turn of a tour; raw base64 is treated as JPEG. */
+  frame?: string;
   question: string;
   persona: Persona;
   language: Language;
@@ -46,10 +48,32 @@ export interface AskResponse {
 }
 
 /** Accept a data URL or raw base64 and return a data URL the SDK can use. */
-export function normalizeDataUrl(input: string | undefined | null): string | null {
-  if (!input || typeof input !== 'string') return null;
+const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+export type MediaParseResult =
+  | { ok: true; dataUrl: string }
+  | { ok: false; reason: 'empty' | 'unsupported_image' | 'video' | 'invalid' };
+
+/**
+ * Normalize a photo to a data URL accepted by the vision model.
+ * iPhone HEIC and MOV/HEVC need conversion or frame extraction before this
+ * endpoint; they are deliberately rejected with a useful error instead of
+ * being forwarded to Mistral as an opaque 400.
+ */
+export function parseImageDataUrl(input: unknown): MediaParseResult {
+  if (typeof input !== 'string' || !input.trim()) return { ok: false, reason: 'empty' };
   const trimmed = input.trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith('data:')) return trimmed;
-  return `data:image/jpeg;base64,${trimmed}`;
+  if (!trimmed.startsWith('data:')) return { ok: true, dataUrl: `data:image/jpeg;base64,${trimmed}` };
+  const match = /^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/i.exec(trimmed);
+  if (!match) return { ok: false, reason: 'invalid' };
+  const mime = match[1].toLowerCase();
+  if (mime.startsWith('video/')) return { ok: false, reason: 'video' };
+  if (!SUPPORTED_IMAGE_TYPES.has(mime)) return { ok: false, reason: 'unsupported_image' };
+  return { ok: true, dataUrl: `data:${mime};base64,${match[2].replace(/\s/g, '')}` };
+}
+
+/** @deprecated Use parseImageDataUrl for validation and MIME handling. */
+export function normalizeDataUrl(input: string | undefined | null): string | null {
+  const parsed = parseImageDataUrl(input);
+  return parsed.ok ? parsed.dataUrl : null;
 }

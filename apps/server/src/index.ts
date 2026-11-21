@@ -4,8 +4,10 @@ import './env';
 
 import cors from 'cors';
 import express from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
 
-import { loadEnv } from './lib/env';
+import { loadEnv, repoRoot } from './lib/env';
 import { askRouter } from './routes/ask';
 import { docsRouter } from './routes/docs';
 import { recapRouter } from './routes/recap';
@@ -18,8 +20,9 @@ loadEnv();
 const app = express();
 
 app.use(cors());
-// Frames arrive as base64 JPEGs — allow generous payloads.
-app.use(express.json({ limit: '15mb' }));
+// Images and short videos arrive as base64 data URLs. Video extraction itself
+// is capped at 25 MiB in lib/video.ts.
+app.use(express.json({ limit: '35mb' }));
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ai-city-guide-server' });
@@ -32,6 +35,13 @@ app.post('/api/ask', askRouter); // frame + question -> box/point + answer + aud
 app.post('/api/stt', express.raw({ type: '*/*', limit: '15mb' }), sttRouter);
 app.post('/api/tts', ttsRouter); // text + persona voice -> audio (Voxtral TTS)
 app.get('/api/recap/:tourId', recapRouter); // tour recap workflow
+
+// In production the built PWA is served from the same origin as the API.
+const webDist = path.join(repoRoot(), 'apps', 'web', 'dist');
+if (fs.existsSync(path.join(webDist, 'index.html'))) {
+  app.use(express.static(webDist));
+  app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(webDist, 'index.html')));
+}
 
 const port = Number(process.env.PORT ?? 3001);
 
