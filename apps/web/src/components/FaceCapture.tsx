@@ -15,12 +15,38 @@ interface Props {
  */
 export default function FaceCapture({ mode, onCapture, onClose, onError }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Keep the latest callback in a ref so a new onError identity doesn't
+  // restart the stream (App re-renders many times a second from the compass).
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   useEffect(() => {
     let stream: MediaStream | null = null;
     let cancelled = false;
+
+    const fail = (e: unknown) => {
+      const name = e instanceof Error ? e.name : '';
+      onErrorRef.current(
+        name === 'NotAllowedError'
+          ? 'Camera permission denied. Allow camera access for this site in your browser settings.'
+          : name === 'NotFoundError' || name === 'OverconstrainedError'
+            ? 'No usable camera found on this device.'
+            : name === 'NotReadableError'
+              ? 'Camera is busy. Close other apps using the camera and reopen the scan.'
+              : 'Front camera unavailable. Open the app over HTTPS and allow camera access.',
+      );
+    };
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      fail(new Error('SecurityError'));
+      return;
+    }
+
+    // Try the front camera first, but fall back to any camera: some devices
+    // reject an exact facingMode constraint even when a camera exists.
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'user' }, audio: false })
+      .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }))
       .then((s) => {
         if (cancelled) {
           s.getTracks().forEach((t) => t.stop());
@@ -32,12 +58,12 @@ export default function FaceCapture({ mode, onCapture, onClose, onError }: Props
           void videoRef.current.play();
         }
       })
-      .catch(() => onError('Front camera unavailable. Grant camera permission over HTTPS.'));
+      .catch(fail);
     return () => {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [onError]);
+  }, []);
 
   const capture = () => {
     const v = videoRef.current;
