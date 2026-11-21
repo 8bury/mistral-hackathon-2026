@@ -76,7 +76,8 @@ export function guideSystemPrompt(opts: {
       ].join('\n')
     : [
         'None of the curated landmarks was matched in the photo, so you have no curated fact.',
-        'Still identify what the visitor is looking at: make your best guess from the photo, your own knowledge and the location hint, and say how confident you are ("This looks like…", "It is most likely…").',
+        'Identify it yourself from the photo, your own knowledge and the location hint, and name it with confidence the way a real guide would: "This is St Bride\'s Church", never "this resembles a church" or "this looks like it could be…".',
+        'Commit to your best answer. Only if you genuinely cannot decide between specific places, add a brief hedge — and still name the one you think it is.',
         'Do not reply that you cannot identify it from the image alone. Only if the photo is genuinely unreadable, say what you can see and ask for a clearer or closer shot.',
       ].join('\n');
 
