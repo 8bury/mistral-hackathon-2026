@@ -28,7 +28,7 @@ export default function AnswerCard({ text, theme, durationMs, speaking, question
   }, [text, durationMs, words.length]);
 
   return (
-    <div className="answer" style={{ fontFamily: theme.font }}>
+    <div className="answer">
       <div className="answer__head">
         <span className={`avatar ${speaking ? 'is-speaking' : ''}`}>{theme.avatar}</span>
       </div>

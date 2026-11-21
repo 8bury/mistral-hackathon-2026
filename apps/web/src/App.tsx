@@ -226,7 +226,7 @@ export default function App() {
   };
 
   return (
-    <div className="app" style={{ ['--accent' as string]: theme.accent, ['--accent-ink' as string]: theme.accentInk }}>
+    <div className="app" data-persona={persona}>
       <CameraView ref={cameraRef} onError={() => {}} />
       {frozenFrame && <img className="frozen" src={frozenFrame.dataUrl} alt="Frozen camera frame" />}
       {phase === 'idle' && <div className="reticle" />}

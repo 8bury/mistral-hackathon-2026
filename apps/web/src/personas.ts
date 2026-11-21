@@ -9,7 +9,7 @@ export interface PersonaTheme {
   accentInk: string;
   font: string;
   /** Highlight style class applied to the overlay box. */
-  frame: 'bouncy' | 'blueprint' | 'ink';
+  frame: 'sticker' | 'drafting' | 'ink';
   thinking: Record<Language, string>;
   hello: Record<Language, string>;
   followUps: Record<Language, string[]>;
@@ -21,10 +21,10 @@ export const PERSONAS: PersonaTheme[] = [
     name: { en: 'Little Soldier', es: 'Soldadito' },
     tagline: { en: 'Playful & full of wonder', es: 'Juguetón y curioso' },
     avatar: '💂',
-    accent: '#ffd166',
-    accentInk: '#1a1200',
-    font: '"Nunito", "Trebuchet MS", system-ui, sans-serif',
-    frame: 'bouncy',
+    accent: '#d62828',
+    accentInk: '#ffffff',
+    font: '"Fredoka", system-ui, sans-serif',
+    frame: 'sticker',
     thinking: { en: 'Ooh, let me look…', es: 'Uy, déjame ver…' },
     hello: { en: "Hi! Point me at something cool!", es: '¡Hola! ¡Apúntame a algo chulo!' },
     followUps: {
@@ -37,10 +37,10 @@ export const PERSONAS: PersonaTheme[] = [
     name: { en: 'The Architect', es: 'La Arquitecta' },
     tagline: { en: 'Structure, materials, intent', es: 'Estructura, materiales, intención' },
     avatar: '📐',
-    accent: '#5ee1ff',
-    accentInk: '#001a22',
-    font: '"JetBrains Mono", ui-monospace, Menlo, monospace',
-    frame: 'blueprint',
+    accent: '#ff5a1f',
+    accentInk: '#ffffff',
+    font: '"IBM Plex Mono", ui-monospace, monospace',
+    frame: 'drafting',
     thinking: { en: 'Measuring…', es: 'Midiendo…' },
     hello: { en: 'Show me a façade. I will read it.', es: 'Enséñame una fachada. La leeré.' },
     followUps: {
@@ -53,9 +53,9 @@ export const PERSONAS: PersonaTheme[] = [
     name: { en: 'The Historian', es: 'El Historiador' },
     tagline: { en: 'Dates, patrons, why it matters', es: 'Fechas, mecenas, por qué importa' },
     avatar: '📜',
-    accent: '#e8b86b',
-    accentInk: '#1f1406',
-    font: 'Georgia, "Iowan Old Style", "Times New Roman", serif',
+    accent: '#8e1b1b',
+    accentInk: '#f3e9d2',
+    font: '"IM Fell English", Georgia, serif',
     frame: 'ink',
     thinking: { en: 'Consulting the archives…', es: 'Consultando los archivos…' },
     hello: { en: 'Every stone has a story. Shall we?', es: 'Cada piedra tiene una historia. ¿Vamos?' },
