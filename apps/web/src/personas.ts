@@ -64,6 +64,25 @@ export const PERSONAS: PersonaTheme[] = [
       es: ['¿Cuándo se colocó?', '¿Quién lo pagó?', '¿Qué reemplazó?'],
     },
   },
+  {
+    id: 'you',
+    name: { en: 'Your Guide', es: 'Tu Guía' },
+    tagline: { en: 'You write how it answers', es: 'Tú decides cómo responde' },
+    avatar: '✍️',
+    accent: '#7c5cff',
+    accentInk: '#ffffff',
+    font: 'Inter, system-ui, sans-serif',
+    frame: 'sticker',
+    thinking: { en: 'Thinking it over…', es: 'Pensándolo…' },
+    hello: { en: 'Tell me how you like your answers.', es: 'Dime cómo quieres tus respuestas.' },
+    followUps: {
+      en: ['What is this?', 'Tell me something surprising', 'Why does it matter?'],
+      es: ['¿Qué es esto?', 'Cuéntame algo sorprendente', '¿Por qué importa?'],
+    },
+  },
 ];
+
+/** Longest style text the 'you' persona sends (the server caps it too). */
+export const MAX_CUSTOM_STYLE = 600;
 
 export const personaById = (id: Persona) => PERSONAS.find((p) => p.id === id)!;

@@ -9,6 +9,8 @@ export interface GuideInput {
   images: string[];
   question: string;
   persona: Persona;
+  /** Visitor-written style instructions for the 'you' persona. */
+  customStyle?: string;
   language: Language;
   landmark: Landmark | null;
   history: HistoryEntry[];
@@ -57,7 +59,7 @@ function choiceToText(choice: { message?: { content?: unknown }; messages?: Arra
  * Web-search tool loop is a later step — keep the prototype simple.
  */
 export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
-  const { images, question, persona, language, landmark, history, location } = input;
+  const { images, question, persona, customStyle, language, landmark, history, location } = input;
 
   const userContent = [
     ...images.map((url) => ({ type: 'image_url' as const, imageUrl: url })),
@@ -77,7 +79,7 @@ export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
       // mistral-large reasons by default and can starve the text chunk — keep it low.
       reasoningEffort: 'low',
       messages: [
-        { role: 'system', content: guideSystemPrompt({ persona, language, landmark, location }) },
+        { role: 'system', content: guideSystemPrompt({ persona, customStyle, language, landmark, location }) },
         // Filter legacy/previously stored blank entries as well as new ones.
         ...history.filter((h) => h.content.trim().length > 0).map((h) => ({ role: h.role, content: h.content })),
         { role: 'user' as const, content: userContent },

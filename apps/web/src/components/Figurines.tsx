@@ -8,13 +8,14 @@ import type { FaceFeatures } from '../faceFeatures';
  * dark outline, ground shadow, subtle right-side shading for a 3D-block feel.
  */
 
-export type FigurineId = 'historian' | 'architect' | 'child' | 'generic';
+export type FigurineId = 'historian' | 'architect' | 'child' | 'generic' | 'you';
 
 export const FIGURINE_LABELS: Record<FigurineId, string> = {
   historian: 'Historian',
   architect: 'Architect',
   child: 'Child',
   generic: 'You',
+  you: 'You',
 };
 
 interface Props {
@@ -53,7 +54,7 @@ export default function Figurine({ id, faceImage, features, size = 44 }: Props) 
       {id === 'historian' && <Historian />}
       {id === 'architect' && <Architect />}
       {id === 'child' && <Child />}
-      {id === 'generic' && <Generic faceImage={faceImage ?? null} features={features ?? null} />}
+      {(id === 'generic' || id === 'you') && <Generic faceImage={faceImage ?? null} features={features ?? null} />}
     </svg>
   );
 }
