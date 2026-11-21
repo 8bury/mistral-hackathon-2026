@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+/* v3 — floating detached card with Siri-style persona glow; spotlight + soft accent halo; transcript as top caption */
+.spot { position: absolute; inset: 0; background: radial-gradient(circle at 195px 300px, rgba(5,7,10,0) 0 86px, rgba(5,7,10,.8) 230px); }
+.halo { position: absolute; left: 195px; top: 300px; width: 240px; height: 240px; margin: -120px 0 0 -120px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(214,40,40,0) 52%, rgba(214,40,40,.28) 60%, rgba(214,40,40,0) 72%); }
+.box { position: absolute; left: 133px; top: 238px; width: 124px; height: 124px; border-radius: 30px; border: 3px solid #fff;
+  box-shadow: 0 0 0 5px rgba(214,40,40,.85), 0 10px 30px rgba(0,0,0,.5); transform: rotate(-3deg); }
+.sticker { position: absolute; left: 226px; top: 214px; height: 32px; padding: 0 12px; border-radius: 16px; background: var(--accent); color: #fff;
+  font: 700 13.5px/32px var(--font); transform: rotate(4deg); box-shadow: 0 6px 18px rgba(214,40,40,.55), inset 0 1px 0 rgba(255,255,255,.35); }
+.cap { position: absolute; top: 62px; left: 20px; right: 20px; text-align: center; font: italic 500 17px/1.35 var(--font); color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
+.cap small { display: block; margin-bottom: 6px; font: 600 11px/1 var(--font); font-style: normal; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+.card-wrap { position: absolute; left: 10px; right: 10px; bottom: 26px; height: 330px; border-radius: 34px; padding: 1.5px;
+  background: conic-gradient(from 210deg at 50% 50%, #d62828, #ff8a5b, #ffd166, #7cc6ff, #b07cff, #d62828); box-shadow: 0 0 40px rgba(214,40,40,.35), 0 30px 60px rgba(0,0,0,.6); }
+.card { width: 100%; height: 100%; border-radius: 32.5px; background: linear-gradient(180deg, rgba(20,16,18,.94), rgba(8,9,12,.97)); padding: 20px 20px 0; position: relative; overflow: hidden; }
+.card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 120px; background: radial-gradient(120% 100% at 50% 0%, rgba(214,40,40,.22), transparent 70%); }
+.who { position: relative; display: flex; align-items: center; gap: 10px; }
+.av { width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; font-size: 22px; background: rgba(214,40,40,.18); box-shadow: inset 0 0 0 1.5px rgba(214,40,40,.7); }
+.who b { font: 600 13px/1 var(--font); color: var(--accent-text); display: block; }
+.who div span { font: 500 12px/1 var(--font); color: var(--ink-3); display: block; margin-top: 5px; }
+.who .live { margin-left: auto; display: flex; gap: 3px; align-items: center; height: 28px; padding: 0 10px; border-radius: 14px; background: rgba(255,255,255,.06); }
+.who .live s { width: 3px; border-radius: 2px; background: var(--accent-text); }
+h1 { position: relative; margin-top: 16px; font: 700 26px/1.12 var(--font); letter-spacing: -0.025em; }
+.a { position: relative; margin-top: 10px; font: 400 16.5px/1.5 var(--font); color: rgba(245,246,248,.88); }
+.a b { color: #fff; }
+.acts { position: absolute; left: 20px; right: 20px; bottom: 20px; display: grid; grid-template-columns: 44px 1fr 1fr; gap: 8px; }
+.acts > * { height: 44px; border-radius: 22px; display: grid; place-items: center; background: rgba(255,255,255,.07); border: 1px solid var(--hair); font: 600 13.5px/1 var(--font); }
+.acts i { width: 18px; height: 18px; }
+</style></head>
+<body data-persona="child"><div class="phone">
+<img class="scene" src="scene.svg" style="transform:translateY(-30px)">
+<div class="spot"></div>
+<div class="halo"></div>
+<div class="box"></div>
+<div class="pin" style="left:195px;top:300px"></div>
+<div class="sticker">Giant flower! 🌸</div>
+<div class="status"></div>
+<div class="cap"><small>You asked</small>“Why is that window round?”</div>
+<div class="card-wrap"><div class="card">
+  <div class="who"><span class="av">💂</span><div><b>Little Soldier</b><span>Notre-Dame, Paris</span></div>
+    <div class="live"><s style="height:8px"></s><s style="height:14px"></s><s style="height:18px"></s><s style="height:11px"></s><s style="height:6px"></s></div></div>
+  <h1>It's a stone flower!</h1>
+  <p class="a">Builders made it round like a <b>giant flower</b> so lots of sunlight could pour in. Count the petals! Each one holds a little picture made of coloured glass.</p>
+  <div class="acts"><div><i data-i="replay"></i></div><div>Is it real glass?</div><div>How old is it?</div></div>
+</div></div>
+<div class="home"></div>
+</div><script src="common.js"></script></body></html>

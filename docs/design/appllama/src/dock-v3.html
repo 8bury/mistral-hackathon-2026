@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+/* v3 — Siri-glow orb mic (persona gradient), Polycam-style right rail, edge glow while listening-ready */
+.scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 320px; background: linear-gradient(180deg, rgba(5,7,10,0), rgba(5,7,10,.85)); }
+.edge { position: absolute; inset: 0; border-radius: 0; box-shadow: inset 0 -40px 80px -40px rgba(214,40,40,.55); }
+.persona { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); height: 36px; padding: 0 14px 0 4px; border-radius: 18px; display: flex; align-items: center; gap: 8px; font: 600 13.5px/1 var(--font); }
+.persona .av { width: 28px; height: 28px; border-radius: 14px; display: grid; place-items: center; font-size: 15px; background: rgba(214,40,40,.25); }
+.rail { position: absolute; right: 14px; top: 300px; width: 48px; padding: 6px; border-radius: 24px; display: flex; flex-direction: column; gap: 6px; }
+.rail div { width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; }
+.rail .act { background: rgba(255,255,255,.92); color: #0b0d12; }
+.rail i { width: 18px; height: 18px; }
+.orb { position: absolute; left: 50%; bottom: 74px; width: 92px; height: 92px; margin-left: -46px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 0, rgba(255,255,255,.0) 38%),
+    conic-gradient(from 120deg, #d62828, #ff8a5b, #ffd166, #ff5a8a, #b07cff, #d62828);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.35) inset, 0 0 40px rgba(255,90,90,.6), 0 0 90px rgba(214,40,40,.45), 0 12px 30px rgba(0,0,0,.5); display: grid; place-items: center; }
+.orb::after { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: rgba(5,7,10,.25); backdrop-filter: blur(6px); }
+.orb i { position: relative; z-index: 2; width: 32px; height: 32px; color: #fff; filter: drop-shadow(0 1px 3px rgba(0,0,0,.4)); }
+.lbl { position: absolute; left: 0; right: 0; bottom: 186px; text-align: center; }
+.lbl b { display: block; font: 650 20px/1.2 var(--font); letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(0,0,0,.6); }
+.lbl span { display: block; margin-top: 6px; font: 500 13.5px/1 var(--font); color: rgba(255,255,255,.6); }
+.sb { position: absolute; bottom: 90px; width: 56px; height: 56px; border-radius: 28px; display: grid; place-items: center; }
+.sb i { width: 22px; height: 22px; }
+.sb small { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); font: 500 11px/1 var(--font); color: rgba(255,255,255,.55); white-space: nowrap; }
+</style></head>
+<body data-persona="child"><div class="phone">
+<img class="scene" src="scene.svg">
+<div class="scrim"></div><div class="edge"></div>
+<div class="status"></div>
+<div class="persona glass-dark"><span class="av">💂</span>Little Soldier</div>
+<div class="rail glass-dark"><div class="act"><i data-i="compass"></i></div><div><i data-i="map"></i></div><div><i data-i="walk"></i></div></div>
+<div class="lbl"><b>“Point me at something cool!”</b><span>Hold to talk · release to ask</span></div>
+<div class="sb glass" style="left:40px"><i data-i="camera"></i><small>Flip</small></div>
+<div class="orb"><i data-i="micFill"></i></div>
+<div class="sb glass" style="right:40px"><i data-i="image"></i><small>Photos</small></div>
+<div class="home"></div>
+</div><script src="common.js"></script></body></html>

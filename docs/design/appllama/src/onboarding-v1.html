@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+/* v1 — stacked list sheet: three rich rows, selected row lifts with accent rim + check, EN/ES segmented in header */
+.bg { position: absolute; inset: -20px; filter: blur(14px) brightness(.55); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 640px; border-radius: 32px 32px 0 0; padding: 0 20px; border-bottom: 0; }
+.hd { margin-top: 22px; display: flex; justify-content: space-between; align-items: flex-start; }
+h1 { font: 700 30px/1.08 var(--font); letter-spacing: -0.03em; }
+.sub { margin-top: 8px; font: 400 15px/1.4 var(--font); color: var(--ink-2); }
+.seg { display: flex; padding: 3px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid var(--hair); }
+.seg span { width: 40px; height: 28px; border-radius: 9px; display: grid; place-items: center; font: 600 12.5px/1 var(--font); color: var(--ink-3); }
+.seg .on { background: rgba(255,255,255,.92); color: #0b0d12; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.list { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+.row { position: relative; display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 22px; background: rgba(255,255,255,.04); border: 1px solid var(--hair); }
+.row.sel { background: linear-gradient(120deg, rgba(255,90,31,.20), rgba(255,90,31,.04) 60%); border-color: rgba(255,122,69,.55); box-shadow: 0 10px 30px rgba(255,90,31,.15), inset 0 1px 0 rgba(255,255,255,.08); }
+.av { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; font-size: 34px; flex: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.2); }
+.nm { font: 650 17px/1.2 var(--font); letter-spacing: -0.01em; }
+.tg { margin-top: 3px; font: 400 13.5px/1.3 var(--font); color: var(--ink-2); }
+.qt { margin-top: 7px; font: italic 400 13px/1.3 var(--font); color: var(--ink-3); }
+.ck { position: absolute; right: 14px; top: 14px; width: 22px; height: 22px; border-radius: 11px; display: grid; place-items: center; }
+.ck i { width: 13px; height: 13px; }
+.sel .ck { background: var(--accent); }
+.row:not(.sel) .ck { border: 1.5px solid rgba(255,255,255,.2); }
+.cta { position: absolute; left: 20px; right: 20px; bottom: 44px; height: 56px; border-radius: 28px; background: #fff; color: #0b0d12; display: grid; place-items: center; font: 650 17px/1 var(--font); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.fine { position: absolute; left: 0; right: 0; bottom: 112px; text-align: center; font: 400 12.5px/1 var(--font); color: var(--ink-3); }
+</style></head>
+<body data-persona="architect"><div class="phone">
+<img class="scene bg" src="scene.svg">
+<div class="status"></div>
+<div class="sheet glass-dark">
+  <div class="grabber"></div>
+  <div class="hd"><div><div class="eyebrow">Vysta · City Guide</div><h1 style="margin-top:10px">Pick your guide</h1></div>
+    <div class="seg"><span class="on">EN</span><span>ES</span></div></div>
+  <p class="sub">Point your camera, hold the mic, ask anything. Your guide answers out loud.</p>
+  <div class="list">
+    <div class="row"><div class="av" style="background:linear-gradient(160deg,#ff5a5a,#8f1414)">💂</div>
+      <div><div class="nm">Little Soldier</div><div class="tg">Playful &amp; full of wonder</div><div class="qt">“Hi! Point me at something cool!”</div></div><div class="ck"></div></div>
+    <div class="row sel"><div class="av" style="background:linear-gradient(160deg,#ff8a50,#b83a0c)">📐</div>
+      <div><div class="nm" style="color:var(--accent-text)">The Architect</div><div class="tg">Structure, materials, intent</div><div class="qt">“Show me a façade. I will read it.”</div></div><div class="ck"><i data-i="check"></i></div></div>
+    <div class="row"><div class="av" style="background:linear-gradient(160deg,#b33b3b,#4a0c0c)">📜</div>
+      <div><div class="nm">The Historian</div><div class="tg">Dates, patrons, why it matters</div><div class="qt">“Every stone has a patron.”</div></div><div class="ck"></div></div>
+  </div>
+  <div class="fine">You can switch guides any time</div>
+  <div class="cta">Start exploring</div>
+  <div class="home"></div>
+</div>
+</div><script src="common.js"></script></body></html>

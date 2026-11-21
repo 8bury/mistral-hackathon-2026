@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#121a30"/>
+      <stop offset=".35" stop-color="#3a3550"/>
+      <stop offset=".62" stop-color="#c46a4a"/>
+      <stop offset=".8" stop-color="#e9a36c"/>
+    </linearGradient>
+    <linearGradient id="stone" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d9b48a"/>
+      <stop offset=".5" stop-color="#a77c58"/>
+      <stop offset="1" stop-color="#5a3f2c"/>
+    </linearGradient>
+    <linearGradient id="stoneL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7d5a40"/>
+      <stop offset="1" stop-color="#c49c74"/>
+    </linearGradient>
+    <linearGradient id="stoneR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b48a63"/>
+      <stop offset="1" stop-color="#5c412e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#ffcf8a" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#ffcf8a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vig" cx=".5" cy=".45" r=".75">
+      <stop offset=".55" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".6"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation=".6"/></filter>
+    <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .09 0"/></filter>
+    <pattern id="lancet" width="22" height="60" patternUnits="userSpaceOnUse">
+      <path d="M5 60V18a6 6 0 0 1 12 0v42z" fill="#2a1a12" opacity=".85"/>
+    </pattern>
+  </defs>
+  <rect width="390" height="844" fill="url(#sky)"/>
+  <!-- distant city -->
+  <path d="M0 640h30v-60h22v40h18v-80h26v100h300v-70h20v-40h28v120H0z" fill="#2a2230" opacity=".7"/>
+  <g filter="url(#soft)">
+    <!-- towers -->
+    <path d="M52 720V150l43-110 43 110v570z" fill="url(#stoneL)"/>
+    <path d="M252 720V150l43-110 43 110v570z" fill="url(#stoneR)"/>
+    <path d="M95 40l-4 -30h8z M295 40l-4-30h8z" fill="#5a3f2c"/>
+    <rect x="66" y="190" width="58" height="420" fill="url(#lancet)"/>
+    <rect x="266" y="190" width="58" height="420" fill="url(#lancet)"/>
+    <!-- nave facade -->
+    <path d="M120 720V250l75-90 75 90v470z" fill="url(#stone)"/>
+    <path d="M120 250l75-90 75 90" fill="none" stroke="#f1d2a6" stroke-width="2" opacity=".6"/>
+    <!-- rose window -->
+    <circle cx="195" cy="330" r="56" fill="#3b2419" stroke="#f0cf9a" stroke-width="3"/>
+    <circle cx="195" cy="330" r="44" fill="#4a2c22" stroke="#d8ae78" stroke-width="1.5"/>
+    <g stroke="#e8c28a" stroke-width="1.6" opacity=".9">
+      <path d="M195 274v112M139 330h112M155 290l80 80M235 290l-80 80M170 278l50 104M220 278l-50 104M143 305l104 50M247 305l-104 50"/>
+    </g>
+    <circle cx="195" cy="330" r="14" fill="#c9823f" stroke="#f0cf9a" stroke-width="2"/>
+    <g fill="#8fb0d8" opacity=".35"><circle cx="195" cy="295" r="8"/><circle cx="230" cy="330" r="8"/><circle cx="195" cy="365" r="8"/><circle cx="160" cy="330" r="8"/></g>
+    <!-- gallery of kings -->
+    <g fill="#3a2418" opacity=".8">
+      <path d="M128 420h134v26H128z"/>
+    </g>
+    <g fill="#c39a70"><path d="M134 444v-18h8v18zM150 444v-18h8v18zM166 444v-18h8v18zM182 444v-18h8v18zM198 444v-18h8v18zM214 444v-18h8v18zM230 444v-18h8v18zM246 444v-18h8v18z"/></g>
+    <!-- portal -->
+    <path d="M150 720V560a45 45 0 0 1 90 0v160z" fill="#21140e"/>
+    <path d="M150 720V560a45 45 0 0 1 90 0v160" fill="none" stroke="#e6c08c" stroke-width="2.5"/>
+    <path d="M160 720V566a35 35 0 0 1 70 0v154" fill="none" stroke="#b88d62" stroke-width="2"/>
+    <rect x="160" y="640" width="70" height="80" fill="url(#glow)" opacity=".5"/>
+  </g>
+  <!-- plaza -->
+  <rect y="716" width="390" height="128" fill="#16110e"/>
+  <path d="M0 716h390" stroke="#f0c88f" stroke-opacity=".35"/>
+  <ellipse cx="60" cy="760" rx="70" ry="22" fill="url(#glow)" opacity=".35"/>
+  <ellipse cx="330" cy="770" rx="80" ry="24" fill="url(#glow)" opacity=".3"/>
+  <g fill="#0b0807">
+    <path d="M40 790v-36a6 6 0 0 1 12 0v36z"/><circle cx="46" cy="744" r="6"/>
+    <path d="M300 800v-40a7 7 0 0 1 14 0v40z"/><circle cx="307" cy="748" r="7"/>
+    <path d="M322 800v-34a6 6 0 0 1 12 0v34z"/><circle cx="328" cy="758" r="6"/>
+  </g>
+  <rect width="390" height="844" fill="url(#vig)"/>
+  <rect width="390" height="844" filter="url(#grain)"/>
+</svg>
