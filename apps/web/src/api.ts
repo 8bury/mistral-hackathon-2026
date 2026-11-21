@@ -47,6 +47,8 @@ export interface AskResponse {
   point: Point2D | null;
   landmarkId: string | null;
   answerText: string;
+  /** Suggested next questions tailored to this answer; may be empty. */
+  followUps: string[];
   audioUrl: string | null;
 }
 
@@ -114,6 +116,7 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
       box: { x: 380, y: 300, width: 260, height: 320 },
       point: null,
       landmarkId,
+      followUps: [],
       answerText: landmarkId === 'dragon-boundary' ? mockAnswer(req.persona, mockLanguage(req.language)) : MOCK_FACTS[landmarkId][mockLanguage(req.language)],
       audioUrl: null,
     };

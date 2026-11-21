@@ -1,6 +1,6 @@
 import { contentToText, MODELS, mistral } from '../lib/mistral';
 import type { Landmark } from '../lib/landmarks';
-import { guideSystemPrompt } from '../lib/prompts';
+import { FOLLOW_UPS_MARKER, guideSystemPrompt } from '../lib/prompts';
 import type { HistoryEntry } from '../lib/store';
 import type { Language, Persona, UserLocation } from '../types';
 
@@ -18,6 +18,28 @@ export interface GuideInput {
 
 export interface GuideResult {
   answerText: string;
+  /** Model-suggested next questions, tailored to this answer (may be empty). */
+  followUps: string[];
+}
+
+const MAX_FOLLOW_UPS = 3;
+
+/**
+ * Split the raw reply into the spoken answer and the suggested follow-ups.
+ * Tolerates markdown decoration around the marker (e.g. "**FOLLOW_UPS:**").
+ */
+export function splitFollowUps(raw: string): GuideResult {
+  const marker = FOLLOW_UPS_MARKER.replace(':', '');
+  const match = new RegExp(`^[\\s*_#>-]*${marker.replace('_', '[_ -]?')}[\\s*_]*:?[\\s*_]*`, 'im').exec(raw);
+  if (!match) return { answerText: raw.trim(), followUps: [] };
+  const answerText = raw.slice(0, match.index).trim();
+  const followUps = raw
+    .slice(match.index + match[0].length)
+    .split('\n')
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').replace(/^["“*]+|["”*]+$/g, '').trim())
+    .filter((q) => q.length > 0 && q.length <= 80)
+    .slice(0, MAX_FOLLOW_UPS);
+  return { answerText, followUps };
 }
 
 /** Mistral may expose a single `message` or a sequence in `messages`. */
@@ -78,8 +100,9 @@ export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
     // Prefer the retry; keep a cut-off first answer only if the retry came back empty.
     if (second.text) answerText = second.text;
   }
-  if (!answerText) {
+  const result = splitFollowUps(answerText);
+  if (!result.answerText) {
     throw new Error('Guide model returned no text response; please retry the request.');
   }
-  return { answerText };
+  return result;
 }

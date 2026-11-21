@@ -541,7 +541,7 @@ export default function App() {
               playKey={playKey}
               speaking={speaking}
               question={transcript}
-              followUps={theme.followUps[language]}
+              followUps={result.followUps?.length ? result.followUps : theme.followUps[language]}
               onFollowUp={handleFollowUp}
               onReplay={replay}
               onStop={stopAudio}

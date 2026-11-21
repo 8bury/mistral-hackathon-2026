@@ -51,6 +51,9 @@ export function groundingSystemPrompt(location?: UserLocation | null): string {
   return parts.join('\n');
 }
 
+/** Line that separates the spoken answer from the suggested follow-up questions. */
+export const FOLLOW_UPS_MARKER = 'FOLLOW_UPS:';
+
 /**
  * Guide agent system prompt: fills the prompts/guide.md template with the
  * persona + language, then appends operational rules (photos,
@@ -104,7 +107,8 @@ export function guideSystemPrompt(opts: {
       ? `- Detect the language of the visitor's latest question and reply in that same language. If the visitor explicitly asks for a different answer language (for example, "answer in Chinese"), honor that request. Do not mention language detection.`
       : `- Answer in ${LANGUAGE_NAMES[language] ?? language} (${language}). If the visitor asks in a different language, follow their requested language when it is unambiguous.`,
     `- Use the curated fact below when it covers the question. For time-sensitive details such as today's opening hours, say that the visitor should verify with the venue's official site.`,
-    `- Keep the answer to at most 3 sentences and end with one follow-up question the visitor might ask next.`,
+    `- Keep the answer to at most 3 sentences. Do not end the answer with a question to the visitor.`,
+    `- After the answer, write a line containing only "${FOLLOW_UPS_MARKER}" and then exactly 3 short questions the visitor might tap to ask you next, one per line, each starting with "- ". Write them in the answer's language, in the visitor's voice (e.g. "Who designed it?"), at most 8 words each, matching your persona's interests. Base them on what you just said or on what the photo shows that you have not covered yet; never repeat a question already asked. They are shown as buttons, not read aloud.`,
     '',
     factBlock,
     ...(locationBlock ? ['', locationBlock] : []),
