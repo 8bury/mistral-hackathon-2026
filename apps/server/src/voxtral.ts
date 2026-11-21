@@ -2,7 +2,7 @@
  * Voxtral client — Mistral's speech models, called directly over HTTPS.
  *
  *   STT: POST https://api.mistral.ai/v1/audio/transcriptions (multipart)
- *        model: voxtral-mini-latest (batch; voxtral-small-latest = flagship)
+ *        model: voxtral-mini-transcribe-3 (batch; voxtral-small-transcribe-3 = flagship)
  *   TTS: POST https://api.mistral.ai/v1/audio/speech (JSON)
  *        model: voxtral-mini-tts-3-0, response { audio_data: base64 }
  *
@@ -10,7 +10,7 @@
  */
 
 const API_BASE = 'https://api.mistral.ai/v1';
-const STT_MODEL = process.env.VOXTRAL_STT_MODEL ?? 'voxtral-mini-latest';
+const STT_MODEL = process.env.VOXTRAL_STT_MODEL ?? 'voxtral-mini-transcribe-3';
 const TTS_MODEL = process.env.VOXTRAL_TTS_MODEL ?? 'voxtral-mini-tts-3-0';
 
 export type Persona = 'child' | 'architect' | 'historian';

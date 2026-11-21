@@ -51,9 +51,26 @@ export default function App() {
         setResult(res);
         // /api/ask returns audioUrl once wired; until then, speak the answer
         // directly via Voxtral TTS so the voice loop works end-to-end.
-        const audioUrl = res.audioUrl ?? (await textToSpeech(res.answerText, personaRef.current, languageRef.current));
+        // TTS failure is non-fatal: the text answer is already on screen.
+        let audioUrl = res.audioUrl ?? null;
+        let ownsUrl = false;
+        if (!audioUrl) {
+          try {
+            audioUrl = await textToSpeech(res.answerText, personaRef.current, languageRef.current);
+            ownsUrl = audioUrl !== null;
+          } catch (ttsErr) {
+            console.warn('[tts]', ttsErr);
+          }
+        }
         if (audioUrl) {
           const player = new Audio(audioUrl);
+          if (ownsUrl) {
+            // Object URLs pin the blob in memory until revoked.
+            const url = audioUrl;
+            const revoke = () => URL.revokeObjectURL(url);
+            player.addEventListener('ended', revoke, { once: true });
+            player.addEventListener('error', revoke, { once: true });
+          }
           player.play().catch(() => setError('Audio playback was blocked — interact with the page to enable sound.'));
         }
       } catch (e) {
