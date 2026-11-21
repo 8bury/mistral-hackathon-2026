@@ -261,9 +261,8 @@ function Generic({ faceImage, features }: { faceImage: string | null; features: 
               )}
               {features.facialHair === 'beard' && <ellipse cx="32" cy={chinY - 3} rx="7" ry="3.2" />}
               {features.facialHair === 'goatee' && <ellipse cx="32" cy={chinY - 2} rx="3.2" ry="3.6" />}
-              {features.facialHair !== 'none' && (
-                <path d={`M27 ${mouthY - 2.6} Q32 ${mouthY + 0.6} 37 ${mouthY - 2.6} Q32 ${mouthY - 1} 27 ${mouthY - 2.6} Z`} />
-              )}
+              {/* every style keeps the mustache stroke */}
+              <path d={`M27 ${mouthY - 2.6} Q32 ${mouthY + 0.6} 37 ${mouthY - 2.6} Q32 ${mouthY - 1} 27 ${mouthY - 2.6} Z`} />
             </g>
           )}
           {/* eyes + brows */}
