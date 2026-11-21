@@ -86,13 +86,12 @@ export default function Controls(props: Props) {
         <span className="dock__side" style={{ justifyContent: 'flex-end' }}>
           {phase !== 'listening' && phase !== 'thinking' && (
             <button
-              className="pill-btn"
+              className="icon-btn"
               onClick={props.onGallery}
               aria-label={es ? 'Abrir galería' : 'Open gallery'}
               title={es ? 'Subir foto o vídeo' : 'Upload photo or video'}
             >
-              <Icon name="gallery" size={18} />
-              {es ? 'Galería' : 'Gallery'}
+              <Icon name="gallery" size={20} />
             </button>
           )}
         </span>
