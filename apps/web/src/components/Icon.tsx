@@ -5,6 +5,8 @@ const PATHS = {
   back: 'M15 6l-6 6 6 6',
   chevron: 'M6 9l6 6 6-6',
   close: 'M6 6l12 12M18 6L6 18',
+  gallery:
+    'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1 11 4.5-4.5 3.5 3.5 2.5-2.5L20 17M8.5 9.5h.01',
 };
 
 export default function Icon({ name, size = 20 }: { name: keyof typeof PATHS; size?: number }) {

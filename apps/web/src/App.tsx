@@ -24,6 +24,48 @@ function newTourId(): string {
 const landmarkName = (id?: string | null) =>
   id ? id.replace(/[-_]/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : null;
 
+/** Decode a gallery image file into a capped JPEG Frame (same shape as a camera snapshot). */
+async function fileToFrame(file: File): Promise<Frame | null> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Could not decode image'));
+      el.src = url;
+    });
+    const maxDim = 1024;
+    const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+    const width = Math.max(1, Math.round(img.naturalWidth * scale));
+    const height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, width, height);
+    return { dataUrl: canvas.toDataURL('image/jpeg', 0.85), width, height };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Capture the current frame of a playing gallery video. */
+function videoToFrame(video: HTMLVideoElement): Frame | null {
+  if (!video.videoWidth) return null;
+  const maxDim = 1024;
+  const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+  const width = Math.round(video.videoWidth * scale);
+  const height = Math.round(video.videoHeight * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(video, 0, 0, width, height);
+  return { dataUrl: canvas.toDataURL('image/jpeg', 0.85), width, height };
+}
+
 const store = {
   get: (k: string) => {
     try {
@@ -86,6 +128,13 @@ export default function App() {
   const [face, setFace] = useState<string | null>(() => store.get('vysta.face'));
   const [faceOpen, setFaceOpen] = useState(false);
   const { heading, needsPermission, requestMotion } = useHeading();
+
+  // Gallery media: an uploaded photo becomes the frozen frame directly; a video
+  // plays as the scene and its current frame is captured when the user talks.
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const galleryVideoRef = useRef<HTMLVideoElement>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaKind, setMediaKind] = useState<'image' | 'video' | null>(null);
 
   // Track the visitor's position while the app runs so /api/ask can ground the
   // answer in nearby landmarks. Non-fatal: any failure leaves locationRef null.
@@ -231,12 +280,18 @@ export default function App() {
     pressedRef.current = true;
 
     // Follow-up on the same frozen frame keeps the highlight context; a fresh
-    // ask from live view snapshots a new frame.
+    // ask from live view snapshots a new frame (from the gallery video if one
+    // is loaded, else from the camera).
     if (!frameRef.current) {
-      const frame = cameraRef.current?.captureFrame() ?? null;
+      const frame =
+        (mediaKind === 'video' && galleryVideoRef.current
+          ? videoToFrame(galleryVideoRef.current)
+          : null) ??
+        cameraRef.current?.captureFrame() ??
+        null;
       if (!frame) {
         pressedRef.current = false;
-        setError('Could not capture a camera frame. Check camera permission.');
+        setError('Could not capture a frame. Check camera permission or pick a photo.');
         return;
       }
       frameRef.current = frame;
@@ -321,13 +376,72 @@ export default function App() {
     setFrozenFrame(null);
     setResult(null);
     setTranscript('');
+    setMediaUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setMediaKind(null);
     setPhase('idle');
   };
+
+  /** Gallery picker: image → frozen frame; video → plays as the scene. */
+  const handlePickMedia = useCallback(
+    async (file: File | undefined | null) => {
+      if (!file) return;
+      const isVideo = file.type.startsWith('video/');
+      const url = URL.createObjectURL(file);
+      setMediaUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+      setMediaKind(isVideo ? 'video' : 'image');
+      discardAudio();
+      setResult(null);
+      setTranscript('');
+      frameRef.current = null;
+      setFrozenFrame(null);
+      if (!isVideo) {
+        try {
+          const frame = await fileToFrame(file);
+          if (frame) {
+            frameRef.current = frame;
+            setFrozenFrame(frame);
+            setFlash((n) => n + 1);
+          }
+        } catch {
+          setError('That image could not be read.');
+        }
+      }
+      setPhase('idle');
+    },
+    [],
+  );
 
   return (
     <div className="app" data-persona={persona}>
       <CameraView ref={cameraRef} onError={setError} />
+      {mediaKind === 'video' && mediaUrl && !frozenFrame && (
+        <video
+          ref={galleryVideoRef}
+          className="frozen"
+          src={mediaUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      )}
       {frozenFrame && <img className="frozen" src={frozenFrame.dataUrl} alt="Frozen camera frame" />}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*,video/*"
+        hidden
+        onChange={(e) => {
+          void handlePickMedia(e.target.files?.[0]);
+          e.target.value = ''; // allow re-picking the same file
+        }}
+      />
       {phase === 'idle' && <div className="reticle" />}
       {phase === 'thinking' && <div className="scan" />}
       {flash > 0 && <div key={flash} className="flash" />}
@@ -403,6 +517,7 @@ export default function App() {
         onTalkStart={handleTalkStart}
         onTalkEnd={handleTalkEnd}
         onBackToLive={backToLive}
+        onGallery={() => galleryInputRef.current?.click()}
         answer={
           result && (
             <AnswerCard
