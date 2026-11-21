@@ -6,6 +6,7 @@ import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
 import GuideSheet from './components/GuideSheet';
+import Icon from './components/Icon';
 import Overlay from './components/Overlay';
 import { personaById } from './personas';
 
@@ -13,6 +14,9 @@ function newTourId(): string {
   // crypto.randomUUID is undefined over plain HTTP (LAN dev server) — fall back.
   return crypto.randomUUID?.() ?? `tour-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
+
+const landmarkName = (id?: string | null) =>
+  id ? id.replace(/[-_]/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : null;
 
 const store = {
   get: (k: string) => {
@@ -38,6 +42,8 @@ export default function App() {
   const frameRef = useRef<Frame | null>(null);
   const pressedRef = useRef(false);
   const playerRef = useRef<HTMLAudioElement | null>(null);
+  const ownedUrlRef = useRef<string | null>(null);
+  const speakTimer = useRef<number>();
 
   const [tourId] = useState(newTourId);
   const [persona, setPersona] = useState<Persona>((store.get('vysta.persona') as Persona) ?? 'child');
@@ -59,14 +65,37 @@ export default function App() {
   const [speechMs, setSpeechMs] = useState(3000);
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playKey, setPlayKey] = useState(0);
 
   useEffect(() => store.set('vysta.persona', persona), [persona]);
   useEffect(() => store.set('vysta.lang', language), [language]);
 
   const stopAudio = () => {
     playerRef.current?.pause();
-    playerRef.current = null;
+    clearTimeout(speakTimer.current);
     setSpeaking(false);
+  };
+  const discardAudio = () => {
+    stopAudio();
+    playerRef.current = null;
+    if (ownedUrlRef.current) URL.revokeObjectURL(ownedUrlRef.current);
+    ownedUrlRef.current = null;
+  };
+  /** No audio (mock / TTS failure): fake the speaking state for the read-along. */
+  const fakeSpeak = (ms: number) => {
+    setSpeaking(true);
+    clearTimeout(speakTimer.current);
+    speakTimer.current = window.setTimeout(() => setSpeaking(false), ms);
+  };
+  const replay = () => {
+    setPlayKey((k) => k + 1);
+    const player = playerRef.current;
+    if (player) {
+      player.currentTime = 0;
+      player.play().catch(() => {});
+    } else {
+      fakeSpeak(speechMs);
+    }
   };
 
   const answerQuestion = useCallback(
@@ -101,20 +130,16 @@ export default function App() {
       if (audioUrl) {
         const player = new Audio(audioUrl);
         playerRef.current = player;
+        if (ownsUrl) ownedUrlRef.current = audioUrl;
         player.addEventListener('loadedmetadata', () => {
           if (Number.isFinite(player.duration)) setSpeechMs(player.duration * 1000);
         });
         player.addEventListener('play', () => setSpeaking(true));
-        const done = () => {
-          setSpeaking(false);
-          if (ownsUrl) URL.revokeObjectURL(audioUrl!);
-        };
-        player.addEventListener('ended', done, { once: true });
-        player.addEventListener('error', done, { once: true });
+        player.addEventListener('pause', () => setSpeaking(false));
+        player.addEventListener('ended', () => setSpeaking(false));
         player.play().catch(() => setError('Tap anywhere to enable sound.'));
       } else {
-        setSpeaking(true);
-        setTimeout(() => setSpeaking(false), res.answerText.split(/\s+/).length * 320);
+        fakeSpeak(res.answerText.split(/\s+/).length * 320);
       }
     },
     [tourId],
@@ -136,7 +161,7 @@ export default function App() {
 
   const handleTalkStart = useCallback(() => {
     setError(null);
-    stopAudio();
+    discardAudio();
     pressedRef.current = true;
 
     // Follow-up on the same frozen frame keeps the highlight context; a fresh
@@ -208,7 +233,7 @@ export default function App() {
   }, []);
 
   const handleFollowUp = (q: string) => {
-    stopAudio();
+    discardAudio();
     setResult(null);
     answerQuestion(q).catch((e) => {
       setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -217,7 +242,7 @@ export default function App() {
   };
 
   const backToLive = () => {
-    stopAudio();
+    discardAudio();
     frameRef.current = null;
     setFrozenFrame(null);
     setResult(null);
@@ -238,31 +263,17 @@ export default function App() {
         point={result?.point ?? null}
         frameSize={frozenFrame ? { width: frozenFrame.width, height: frozenFrame.height } : null}
         theme={theme}
-      >
-        {result && (
-          <AnswerCard
-            text={result.answerText}
-            theme={theme}
-            durationMs={speechMs}
-            speaking={speaking}
-            question={transcript}
-          />
-        )}
-      </Overlay>
+        label={landmarkName(result?.landmarkId)}
+      />
 
-      {phase === 'listening' && transcript === '' && (
-        <div className="listening-bubble">
-          <span className="dots"><i /><i /><i /></span>
-        </div>
-      )}
 
       <header className="topbar">
         <button className="guide-chip" onClick={() => setSheetOpen(true)}>
-          <span>{theme.avatar}</span>
+          <span className="guide-chip__avatar">{theme.avatar}</span>
           <span>{theme.name[language]}</span>
           <span className="guide-chip__lang">{language.toUpperCase()}</span>
+          <Icon name="chevron" size={16} />
         </button>
-        {frozenFrame && <span className="frozen-tag">{language === 'es' ? 'Congelado' : 'Frozen'}</span>}
       </header>
 
       {error && (
@@ -276,11 +287,27 @@ export default function App() {
         theme={theme}
         language={language}
         level={level}
-        followUps={theme.followUps[language]}
+        frozen={frozenFrame !== null}
         onTalkStart={handleTalkStart}
         onTalkEnd={handleTalkEnd}
-        onFollowUp={handleFollowUp}
         onBackToLive={backToLive}
+        answer={
+          result && (
+            <AnswerCard
+              text={result.answerText}
+              theme={theme}
+              language={language}
+              durationMs={speechMs}
+              playKey={playKey}
+              speaking={speaking}
+              question={transcript}
+              followUps={theme.followUps[language]}
+              onFollowUp={handleFollowUp}
+              onReplay={replay}
+              onStop={stopAudio}
+            />
+          )
+        }
       />
 
       {(welcome || sheetOpen) && (
