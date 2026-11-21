@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+/* Before/after composite. Usage: compare.html?title=…&before=../before/x.png&after=../x-v1.png&alabel=… */
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 920px; height: 1000px; background: #05070a; color: #f5f6f8; overflow: hidden;
+  font-family: "SF Pro Display", -apple-system, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+h1 { position: absolute; top: 30px; left: 0; right: 0; text-align: center; font: 700 26px/1 inherit; letter-spacing: -0.02em; font-family: inherit; }
+.col { position: absolute; top: 84px; width: 390px; }
+.col.b { left: 50px; } .col.a { right: 50px; }
+.tag { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 15px; font: 600 13px/1 inherit; font-family: inherit;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); margin-bottom: 14px; }
+.tag b { width: 8px; height: 8px; border-radius: 4px; }
+.b .tag b { background: #8a8f99; } .a .tag b { background: #ffd166; box-shadow: 0 0 8px #ffd166; }
+img { width: 390px; height: 844px; border-radius: 44px; display: block; border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.arrow { position: absolute; left: 50%; top: 520px; width: 44px; height: 44px; margin-left: -22px; border-radius: 22px; display: grid; place-items: center;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #fff; font-size: 20px; }
+</style></head><body>
+<h1 id="t"></h1>
+<div class="col b"><div class="tag"><b></b>Before · current build</div><img id="bi"></div>
+<div class="arrow">→</div>
+<div class="col a"><div class="tag"><b></b><span id="al"></span></div><img id="ai"></div>
+<script>
+const q = new URLSearchParams(location.search);
+document.getElementById('t').textContent = q.get('title');
+document.getElementById('bi').src = q.get('before');
+document.getElementById('ai').src = q.get('after');
+document.getElementById('al').textContent = q.get('alabel');
+</script></body></html>

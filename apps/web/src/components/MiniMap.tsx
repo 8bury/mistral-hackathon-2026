@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { Stop } from '../walk';
 
 import type { Language, UserLocation } from '../api';
+import Compass from './Compass';
 import Figurine from './Figurines';
 import Icon from './Icon';
 
@@ -19,20 +20,20 @@ const project = (lat: number, lng: number) => ({
   y: ((BOUNDS.north - lat) / (BOUNDS.north - BOUNDS.south)) * H,
 });
 
-const PLACES = [
+export const PLACES = [
   { id: 'st-pauls', name: "St Paul's Cathedral", lat: 51.5138, lng: -0.0984 },
   { id: 'leadenhall-market', name: 'Leadenhall Market', lat: 51.5128, lng: -0.0834 },
   { id: 'dragon-boundary', name: 'Dragon boundary marker', lat: 51.5113, lng: -0.1112 },
 ].map((p) => ({ ...p, ...project(p.lat, p.lng) }));
 
-type Place = (typeof PLACES)[number];
-type Me = { lat: number; lng: number; x: number; y: number };
+export type Place = (typeof PLACES)[number];
+export type Me = { lat: number; lng: number; x: number; y: number };
 
 /** Mock "you are here": outside Bank station, then beside your latest stop. */
 const BANK: Me = { lat: 51.5133, lng: -0.089, ...project(51.5133, -0.089) };
 
 /** Visited places in walk order, without consecutive repeats. */
-function routeOf(stops: Stop[]): Place[] {
+export function routeOf(stops: Stop[]): Place[] {
   const out: Place[] = [];
   for (const s of stops) {
     const p = PLACES.find((pl) => pl.id === s.landmarkId);
@@ -58,14 +59,14 @@ const ROADS_MINOR = [
   'M120,240 L130,300', // Temple
 ];
 
-const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+export const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
   const dLat = (b.lat - a.lat) * 111_320;
   const dLng = (b.lng - a.lng) * 111_320 * Math.cos((a.lat * Math.PI) / 180);
   return Math.hypot(dLat, dLng);
 };
-const fmt = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
+export const fmt = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
 
-function MapArt({ focusId, span, labels, me, route, heading, face }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[]; heading: number; face: string | null }) {
+export function MapArt({ focusId, span, labels, me, route, heading, face }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[]; heading: number; face: string | null }) {
   const ME = me;
   const focus = PLACES.find((p) => p.id === focusId) ?? ME;
   const order = (id: string) => route.findIndex((p) => p.id === id) + 1;
@@ -121,17 +122,6 @@ function MapArt({ focusId, span, labels, me, route, heading, face }: { focusId: 
   );
 }
 
-interface Props {
-  language: Language;
-  /** Landmark the current answer is about; its pin is highlighted. */
-  focusId: string | null;
-  stops: Stop[];
-  onRecap: () => Promise<string>;
-  heading: number;
-  face: string | null;
-  /** Live GPS fix; drawn on the map when it falls inside the mapped area. */
-  location: UserLocation | null;
-}
 
 /** Real GPS is used for "you are here" only within this margin of the map. */
 const onMap = (l: UserLocation) => {
@@ -139,18 +129,9 @@ const onMap = (l: UserLocation) => {
   return x > -W * 0.25 && x < W * 1.25 && y > -H * 0.25 && y < H * 1.25;
 };
 
-const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-export default function MiniMap({ language, focusId, stops, onRecap, heading, face, location }: Props) {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<'nearby' | 'walk'>('nearby');
-  const [picked, setPicked] = useState<string | null>(null);
-  const [recapText, setRecapText] = useState<string | null>(null);
-  const [recapBusy, setRecapBusy] = useState(false);
-  const es = language === 'es';
-
-  const route = routeOf(stops);
-  const last = route.at(-1);
+/** Where to draw "you": real GPS inside the City, else beside the latest stop, else Bank. */
+export function whereAmI(stops: Stop[], location: UserLocation | null): { me: Me; farAway: number | null } {
+  const last = routeOf(stops).at(-1);
   const gps = location && onMap(location) ? location : null;
   const me: Me = gps
     ? { lat: gps.lat, lng: gps.lng, ...project(gps.lat, gps.lng) }
@@ -158,27 +139,67 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
       ? { lat: last.lat, lng: last.lng, x: last.x + 18, y: last.y + 22 }
       : BANK;
   // Outside the City: say how far away the visitor is instead of faking it silently.
-  const farAway = location && !gps ? metres(location, BANK) : null;
-  const sorted = [...PLACES].sort((a, b) => metres(me, a) - metres(me, b));
-  const selected = picked ?? focusId;
-  const nameOf = (id: string | null) => PLACES.find((p) => p.id === id)?.name ?? (es ? 'Sin lugar' : 'Unplaced');
+  return { me, farAway: location && !gps ? metres(location, BANK) : null };
+}
 
-  const doRecap = async () => {
-    setRecapBusy(true);
-    try {
-      setRecapText(await onRecap());
-    } catch (e) {
-      setRecapText(e instanceof Error ? e.message : 'Recap failed');
-    } finally {
-      setRecapBusy(false);
-    }
-  };
+export const placeName = (id: string | null, es: boolean) =>
+  PLACES.find((p) => p.id === id)?.name ?? (es ? 'Sin lugar' : 'Unplaced');
+
+export const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+interface Props {
+  language: Language;
+  /** Landmark the current answer is about; its pin is highlighted. */
+  focusId: string | null;
+  stops: Stop[];
+  heading: number;
+  face: string | null;
+  /** Live GPS fix; drawn on the map when it falls inside the mapped area. */
+  location: UserLocation | null;
+  /** The map sheet is controlled by the app (mode row + widget both open it). */
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  /** Open the walk recap page. */
+  onRecap: () => void;
+  needsPermission: boolean;
+  onEnableCompass: () => void;
+}
+
+/** Top-right "nearest landmark" widget on the camera, plus the full map sheet. */
+export default function MiniMap(props: Props) {
+  const { language, focusId, stops, heading, face, location, open } = props;
+  const [tab, setTab] = useState<'nearby' | 'walk'>('nearby');
+  const [picked, setPicked] = useState<string | null>(null);
+  const es = language === 'es';
+
+  const route = routeOf(stops);
+  const { me, farAway } = whereAmI(stops, location);
+  const sorted = [...PLACES].sort((a, b) => metres(me, a) - metres(me, b));
+  const nearest = sorted[0];
+  const selected = picked ?? focusId;
+  const dist = (m: number) => (m < 25 ? (es ? 'Aquí' : 'Here') : fmt(m));
+  // Arrow points from you to the nearest place, relative to where the phone faces.
+  const bearing = (Math.atan2(nearest.x - me.x, me.y - nearest.y) * 180) / Math.PI;
 
   return (
     <>
-      <button className="minimap" onClick={() => setOpen(true)} aria-label={es ? 'Abrir mapa' : 'Open map'}>
-        <MapArt focusId={focusId} span={320} labels={false} me={me} route={route} heading={heading} face={face} />
-        {stops.length > 0 && <span className="minimap__count">{stops.length}</span>}
+      <button className="place-widget" onClick={props.onOpen} aria-label={es ? 'Abrir mapa' : 'Open map'}>
+        <span className="place-widget__dir">
+          {/* Without a real position or compass the arrow would point nowhere useful. */}
+          {farAway == null && !props.needsPermission ? (
+            <span style={{ transform: `rotate(${bearing - heading}deg)` }}><Icon name="arrow" size={14} /></span>
+          ) : (
+            <Icon name="map" size={14} />
+          )}
+        </span>
+        <span className="place-widget__text">
+          <span className="place-widget__name">{nearest.name}</span>
+          <span className="place-widget__dist">
+            {farAway == null ? dist(metres(me, nearest)) : es ? 'Posición demo' : 'Demo position'}
+          </span>
+        </span>
+        {stops.length > 0 && <span className="place-widget__count">{stops.length}</span>}
       </button>
 
       {open && (
@@ -194,7 +215,8 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
                 {stops.length > 0 && <span className="seg__n">{stops.length}</span>}
               </button>
             </div>
-            <button className="icon-btn map-close" onClick={() => setOpen(false)} aria-label={es ? 'Cerrar' : 'Close'}>
+            <Compass heading={heading} needsPermission={props.needsPermission} onEnable={props.onEnableCompass} />
+            <button className="icon-btn map-close" onClick={props.onClose} aria-label={es ? 'Cerrar' : 'Close'}>
               <Icon name="close" />
             </button>
           </div>
@@ -212,7 +234,7 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
                 <button key={p.id} className={`map-row ${p.id === selected ? 'is-on' : ''}`} onClick={() => setPicked(p.id)}>
                   <span className="map-row__dot" />
                   <span className="map-row__name">{p.name}</span>
-                  <span className="map-row__dist">{fmt(metres(me, p))}</span>
+                  <span className="map-row__dist">{dist(metres(me, p))}</span>
                 </button>
               ))}
 
@@ -230,7 +252,7 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
                       <button className={`walk-row ${s.landmarkId === selected ? 'is-on' : ''}`} onClick={() => setPicked(s.landmarkId)}>
                         <img src={s.thumb} alt="" />
                         <span className="walk-row__body">
-                          <span className="walk-row__name">{nameOf(s.landmarkId)}</span>
+                          <span className="walk-row__name">{placeName(s.landmarkId, es)}</span>
                           <span className="walk-row__q">{s.question}</span>
                         </span>
                         <span className="walk-row__time">{clock(s.time)}</span>
@@ -238,13 +260,9 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
                     </li>
                   ))}
                 </ol>
-                {recapText ? (
-                  <p className="recap">{recapText}</p>
-                ) : (
-                  <button className="primary" onClick={() => void doRecap()} disabled={recapBusy}>
-                    {recapBusy ? (es ? 'Preparando…' : 'Writing recap…') : es ? 'Resumen del paseo' : 'Recap my walk'}
-                  </button>
-                )}
+                <button className="primary" onClick={props.onRecap}>
+                  {es ? 'Ver resumen del paseo' : 'See walk recap'}
+                </button>
               </>
             )}
           </div>

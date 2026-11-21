@@ -1,0 +1,70 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+/* v2 — Lens-style: corner brackets, chips float above a compact peek sheet, persona in the sheet header */
+.dim { position: absolute; inset: 0; background: rgba(5,7,10,.55); -webkit-mask: radial-gradient(circle at 195px 330px, transparent 0 78px, #000 150px); mask: radial-gradient(circle at 195px 330px, transparent 0 78px, #000 150px); }
+.brk { position: absolute; left: 127px; top: 262px; width: 136px; height: 136px; --c: #fff; --l: 26px; --w: 3px;
+  background:
+    linear-gradient(var(--c),var(--c)) top left/var(--l) var(--w), linear-gradient(var(--c),var(--c)) top left/var(--w) var(--l),
+    linear-gradient(var(--c),var(--c)) top right/var(--l) var(--w), linear-gradient(var(--c),var(--c)) top right/var(--w) var(--l),
+    linear-gradient(var(--c),var(--c)) bottom left/var(--l) var(--w), linear-gradient(var(--c),var(--c)) bottom left/var(--w) var(--l),
+    linear-gradient(var(--c),var(--c)) bottom right/var(--l) var(--w), linear-gradient(var(--c),var(--c)) bottom right/var(--w) var(--l);
+  background-repeat: no-repeat; filter: drop-shadow(0 0 10px rgba(255,255,255,.35)); border-radius: 6px; }
+.tag { position: absolute; left: 50%; transform: translateX(-50%); top: 222px; height: 28px; padding: 0 10px; border-radius: 14px; font: 600 12.5px/28px var(--font);
+  background: rgba(255,255,255,.92); color: #0b0d12; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+
+.ask { position: absolute; top: 58px; left: 64px; right: 64px; height: 44px; border-radius: 22px; display: flex; align-items: center; gap: 10px; padding: 0 16px;
+  font: 400 15px/1 var(--font); color: var(--ink-2); }
+.ask i { width: 18px; height: 18px; color: var(--accent-text); }
+.ib { position: absolute; top: 60px; width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; }
+.ib i { width: 18px; height: 18px; }
+.chips { position: absolute; left: 16px; right: 0; bottom: 404px; display: flex; gap: 8px; }
+.chips .chip { height: 36px; border-radius: 18px; }
+.chips .chip i { width: 14px; height: 14px; color: var(--accent-text); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 392px; border-radius: 30px 30px 0 0; padding: 0 22px; background: rgba(12,14,19,.96); border: 1px solid var(--hair); border-bottom: 0; box-shadow: 0 -20px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08); }
+.hdr { margin-top: 18px; display: flex; gap: 12px; align-items: center; }
+.thumb { width: 52px; height: 52px; border-radius: 14px; overflow: hidden; position: relative; border: 1px solid var(--hair-2); flex: none; }
+.thumb img { position: absolute; width: 390px; height: 844px; left: -168px; top: -302px; transform: scale(.42); transform-origin: 195px 330px; }
+.hdr h1 { font: 650 22px/1.15 var(--font); letter-spacing: -0.02em; color: #fff; }
+.hdr .sub { margin-top: 4px; font: 500 13px/1 var(--font); color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
+.hdr .sub b { color: var(--accent-text); font-weight: 600; }
+.hdr .sub .dot { width: 3px; height: 3px; border-radius: 2px; background: var(--ink-3); }
+.div { height: 1px; background: var(--hair); margin: 16px 0; }
+.q { display: inline-block; max-width: 85%; padding: 9px 13px; border-radius: 16px 16px 16px 5px; background: rgba(255,255,255,.06); border: 1px solid var(--hair); font: italic 400 14.5px/1.3 var(--font); color: var(--ink-2); }
+.a { margin-top: 12px; font: 400 16px/1.5 var(--font); color: rgba(245,246,248,.9); }
+.a b { color: #fff; font-weight: 600; }
+.bar { position: absolute; left: 22px; right: 22px; bottom: 30px; display: flex; gap: 10px; align-items: center; }
+.prog { flex: 1; height: 44px; border-radius: 22px; background: rgba(255,255,255,.06); border: 1px solid var(--hair); display: flex; align-items: center; gap: 10px; padding: 0 6px; }
+.prog .c { width: 32px; height: 32px; border-radius: 16px; background: var(--accent); display: grid; place-items: center; box-shadow: 0 4px 14px rgba(142,27,27,.6); }
+.prog .c i { width: 15px; height: 15px; }
+.track { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); position: relative; }
+.track::before { content: ""; position: absolute; inset: 0 62% 0 0; border-radius: 2px; background: var(--accent-text); }
+.prog small { font: 500 12px/1 ui-monospace, Consolas, monospace; color: var(--ink-3); padding-right: 8px; }
+.mic { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; background: #fff; color: #0b0d12; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+.mic i { width: 20px; height: 20px; }
+</style></head>
+<body data-persona="historian"><div class="phone">
+<img class="scene" src="scene.svg">
+<div class="dim"></div>
+<div class="brk"></div>
+<div class="pin" style="left:195px;top:330px"></div>
+<div class="tag">Rose window · 1225</div>
+<div class="status"></div>
+<div class="ib glass-dark" style="left:16px"><i data-i="close"></i></div>
+<div class="ask glass-dark"><i data-i="sparkle"></i>Ask about the window…</div>
+<div class="ib glass-dark" style="right:16px"><i data-i="share"></i></div>
+<div class="chips">
+  <span class="chip glass-dark"><i data-i="sparkle"></i>Who paid for it?</span>
+  <span class="chip glass-dark">Survived the fire?</span>
+  <span class="chip glass-dark">Older than…</span>
+</div>
+<div class="sheet">
+  <div class="grabber"></div>
+  <div class="hdr"><div class="thumb"><img src="scene.svg"></div>
+    <div><h1>The West Rose, Notre-Dame</h1><div class="sub"><b>📜 The Historian</b><span class="dot"></span>Paris · 1225</div></div></div>
+  <div class="div"></div>
+  <span class="q">“Who built that round window?”</span>
+  <p class="a">Glazed around <b>1225</b>, decades after <b>Bishop Maurice de Sully</b> began the cathedral, its glass told Bible stories to a city that mostly could not read, and it <b>survived the 2019 fire</b>.</p>
+  <div class="bar"><div class="prog"><span class="c"><i data-i="speaker"></i></span><span class="track"></span><small>0:06 / 0:17</small></div><div class="mic"><i data-i="micFill"></i></div></div>
+  <div class="home"></div>
+</div>
+</div><script src="common.js"></script></body></html>
