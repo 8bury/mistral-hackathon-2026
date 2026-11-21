@@ -29,9 +29,9 @@ npm run dev:server     # http://localhost:3001
 npm run dev:web        # http://localhost:5173 (proxies /api to the server)
 ```
 
-The web app mocks `/api/ask` and `/api/stt` by default (`VITE_MOCK_API=true`)
-so the frontend is never blocked on the backend. Set it to `false` to hit the
-real server.
+The web app calls the real server by default — mocks are OFF unless you opt in
+with `VITE_MOCK_API=true` (`VITE_MOCK_ASK=true` mocks only `/api/ask`).
 
 On a real phone, serve over HTTPS (ngrok / Cloudflare Tunnel) — camera APIs
 require a secure context.
+

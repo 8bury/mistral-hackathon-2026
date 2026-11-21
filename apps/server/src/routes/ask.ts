@@ -1,18 +1,98 @@
 import { Request, Response } from 'express';
 
+import { answerQuestion } from '../agents/guide';
+import { groundFrame } from '../agents/grounding';
+import { findLandmarkById } from '../lib/landmarks';
+import { addFrames, addHistory, getTour, recentFrames } from '../lib/store';
+import { normalizeDataUrl, type AskRequest, type AskResponse, type UserLocation } from '../types';
+
+/**
+ * Accept only a well-formed GPS fix; anything else (missing, non-finite,
+ * out-of-range) is treated as absent. Location must never cause a 400.
+ */
+function parseLocation(value: unknown): UserLocation | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const { lat, lng, accuracy } = value as Record<string, unknown>;
+  if (
+    typeof lat !== 'number' ||
+    typeof lng !== 'number' ||
+    typeof accuracy !== 'number' ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    !Number.isFinite(accuracy)
+  ) {
+    return null;
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || accuracy < 0) return null;
+  return { lat, lng, accuracy };
+}
+
 /**
  * POST /api/ask
- * Body (contract TBD — packages/shared will own these types):
- *   { frame: base64Jpeg, question: string, persona, language, tourId }
- * Response:
- *   { box, point, landmarkId, answerText, audioUrl }
+ * Body: { frame: base64Jpeg (data URL or raw base64), question, persona, language, tourId, frames?: string[], location?: { lat, lng, accuracy } | null }
+ * Response: { box, point, landmarkId, answerText, audioUrl }
  *
- * TODO (agents & knowledge): router agent -> grounding agent (Le Chonk)
- * -> guide agent (persona + language, answers from data/landmarks.json)
+ * Pipeline: accumulate the tour's photos -> grounding agent (Le Chonk, vision,
+ * optionally biased by the visitor's GPS location) -> guide agent (persona +
+ * language, photos + history).
+ * audioUrl stays null until the TTS route is wired.
  */
-export function askRouter(_req: Request, res: Response) {
-  res.status(501).json({
-    error: 'not_implemented',
-    todo: 'wire router -> grounding -> guide agents; see prompts/ and data/landmarks.json',
-  });
+export async function askRouter(req: Request, res: Response): Promise<void> {
+  try {
+    const body = req.body as Partial<AskRequest>;
+    const frame = normalizeDataUrl(body.frame);
+    const question = (body.question ?? '').trim();
+    const persona = body.persona ?? 'child';
+    const language = body.language ?? 'en';
+    const tourId = body.tourId ?? 'anonymous';
+    const location = parseLocation(body.location);
+
+    if (!frame) {
+      res.status(400).json({ error: 'missing_frame', message: 'frame must be a base64 JPEG (data URL or raw base64)' });
+      return;
+    }
+    if (!question) {
+      res.status(400).json({ error: 'missing_question' });
+      return;
+    }
+
+    const tour = getTour(tourId);
+    const extra = Array.isArray(body.frames) ? body.frames.map(normalizeDataUrl).filter((f): f is string => !!f) : [];
+    addFrames(tour, [frame, ...extra]);
+
+    // 1. Ground the latest frame against the curated landmark set.
+    const grounding = await groundFrame(frame, question, location);
+    const landmark = findLandmarkById(grounding.landmarkId);
+
+    // 2. Guide answers with all recent photos + history.
+    const { answerText } = await answerQuestion({
+      images: recentFrames(tour),
+      question,
+      persona,
+      language,
+      landmark,
+      history: tour.history,
+      location,
+    });
+
+    addHistory(tour, [
+      { role: 'user', content: question },
+      { role: 'assistant', content: answerText },
+    ]);
+
+    const response: AskResponse = {
+      box: grounding.box,
+      point: grounding.point,
+      landmarkId: grounding.landmarkId,
+      answerText,
+      audioUrl: null,
+    };
+    res.json(response);
+  } catch (err) {
+    console.error('[ask] pipeline failed:', err);
+    res.status(502).json({
+      error: 'llm_pipeline_failed',
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
