@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 
 import type { Stop } from '../walk';
 
 import type { Language, UserLocation } from '../api';
 import type { FaceFeatures } from '../faceFeatures';
+import { fmtDistance, metres as metresLL, placesNear, type LatLng, type Place as LivePlace } from '../places';
 import Compass from './Compass';
 import Figurine from './Figurines';
 import Icon from './Icon';
@@ -169,6 +170,41 @@ interface Props {
   onEnableCompass: () => void;
 }
 
+interface LiveMapProps {
+  places: LivePlace[];
+  focusId: string | null;
+  me: LatLng;
+  route: LatLng[];
+  heading: number;
+  labels: boolean;
+  face: string | null;
+  faceFeatures: FaceFeatures | null;
+  onPick?: (id: string) => void;
+  onFail: () => void;
+}
+type LiveMapComponent = ComponentType<LiveMapProps>;
+let liveMapLoad: Promise<LiveMapComponent> | null = null;
+const loadLiveMap = () => (liveMapLoad ??= import('./LiveMap').then((m) => m.default));
+
+/** The live street map (lazy-loaded), or `fallback` while it loads, offline, or if it fails. */
+function LiveOrDrawn({ fallback, ...props }: Omit<LiveMapProps, 'onFail'> & { fallback: ReactNode }) {
+  const [Live, setLive] = useState<LiveMapComponent | null>(null);
+  const [failed, setFailed] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+  useEffect(() => {
+    if (failed) return;
+    let alive = true;
+    loadLiveMap().then(
+      (C) => alive && setLive(() => C),
+      () => alive && setFailed(true),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [failed]);
+  if (failed || !Live) return <>{fallback}</>;
+  return <Live {...props} onFail={() => setFailed(true)} />;
+}
+
 /** Top-right "nearest landmark" widget on the camera, plus the full map sheet. */
 export default function MiniMap(props: Props) {
   const { language, focusId, stops, heading, face, faceFeatures, location, open } = props;
@@ -177,20 +213,26 @@ export default function MiniMap(props: Props) {
   const es = language === 'es';
 
   const route = routeOf(stops);
-  const { me, farAway } = whereAmI(stops, location);
-  const sorted = [...PLACES].sort((a, b) => metres(me, a) - metres(me, b));
-  const nearest = sorted[0];
+  const { me } = whereAmI(stops, location);
+  // Live map + lists use the real GPS fix anywhere in the world; without one,
+  // the demo position (beside the latest stop, else Bank) from whereAmI.
+  const liveMe: LatLng = location ? { lat: location.lat, lng: location.lng } : { lat: me.lat, lng: me.lng };
+  const livePlaces = placesNear(liveMe);
+  const liveRoute = route.flatMap((r) => livePlaces.filter((p) => p.id === r.id));
+  const sorted = [...livePlaces].sort((a, b) => metresLL(liveMe, a) - metresLL(liveMe, b));
+  const nearest = sorted[0] ?? PLACES[0];
   const selected = picked ?? focusId;
-  const dist = (m: number) => (m < 25 ? (es ? 'Aquí' : 'Here') : fmt(m));
+  const dist = (m: number) => (m < 25 ? (es ? 'Aquí' : 'Here') : fmtDistance(m));
   // Arrow points from you to the nearest place, relative to where the phone faces.
-  const bearing = (Math.atan2(nearest.x - me.x, me.y - nearest.y) * 180) / Math.PI;
+  const bearing =
+    (Math.atan2((nearest.lng - liveMe.lng) * Math.cos((liveMe.lat * Math.PI) / 180), nearest.lat - liveMe.lat) * 180) / Math.PI;
 
   return (
     <>
       <button className="place-widget" onClick={props.onOpen} aria-label={es ? 'Abrir mapa' : 'Open map'}>
         <span className="place-widget__dir">
           {/* Without a real position or compass the arrow would point nowhere useful. */}
-          {farAway == null && !props.needsPermission ? (
+          {location && !props.needsPermission ? (
             <span style={{ transform: `rotate(${bearing - heading}deg)` }}><Icon name="arrow" size={14} /></span>
           ) : (
             <Icon name="map" size={14} />
@@ -199,7 +241,7 @@ export default function MiniMap(props: Props) {
         <span className="place-widget__text">
           <span className="place-widget__name">{nearest.name}</span>
           <span className="place-widget__dist">
-            {farAway == null ? dist(metres(me, nearest)) : es ? 'Posición demo' : 'Demo position'}
+            {location ? dist(metresLL(liveMe, nearest)) : es ? 'Posición demo' : 'Demo position'}
           </span>
         </span>
         {stops.length > 0 && <span className="place-widget__count">{stops.length}</span>}
@@ -207,7 +249,21 @@ export default function MiniMap(props: Props) {
 
       {open && (
         <div className="map-sheet">
-          <MapArt focusId={selected} span={560} labels me={me} route={route} heading={heading} face={face} faceFeatures={faceFeatures} />
+          <LiveOrDrawn
+            places={livePlaces}
+            focusId={selected}
+            me={liveMe}
+            route={liveRoute}
+            heading={heading}
+            labels
+            face={face}
+            faceFeatures={faceFeatures}
+            onPick={(id) => {
+              setPicked(id);
+              setTab('nearby');
+            }}
+            fallback={<MapArt focusId={selected} span={560} labels me={me} route={route} heading={heading} face={face} faceFeatures={faceFeatures} />}
+          />
           <div className="map-top">
             <div className="seg" role="tablist">
               <button role="tab" aria-selected={tab === 'nearby'} className={tab === 'nearby' ? 'is-on' : ''} onClick={() => setTab('nearby')}>
@@ -225,11 +281,11 @@ export default function MiniMap(props: Props) {
           </div>
 
           <div className="map-list">
-            {farAway != null && (
+            {!location && (
               <p className="map-note">
                 {es
-                  ? `Estás a ${fmt(farAway)} de la City de Londres: el mapa muestra una posición de demostración.`
-                  : `You're ${fmt(farAway)} from the City of London, so the map shows a demo position.`}
+                  ? 'Sin acceso a tu ubicación: el mapa muestra una posición de demostración en la City de Londres.'
+                  : 'Location is off, so the map shows a demo position in the City of London.'}
               </p>
             )}
             {tab === 'nearby' &&
@@ -237,7 +293,7 @@ export default function MiniMap(props: Props) {
                 <button key={p.id} className={`map-row ${p.id === selected ? 'is-on' : ''}`} onClick={() => setPicked(p.id)}>
                   <span className="map-row__dot" />
                   <span className="map-row__name">{p.name}</span>
-                  <span className="map-row__dist">{dist(metres(me, p))}</span>
+                  <span className="map-row__dist">{dist(metresLL(liveMe, p))}</span>
                 </button>
               ))}
 
