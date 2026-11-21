@@ -7,6 +7,7 @@ import CameraView, { type CameraHandle, type Frame } from './components/CameraVi
 import Controls, { type Phase } from './components/Controls';
 import GuideSheet from './components/GuideSheet';
 import Icon from './components/Icon';
+import MiniMap from './components/MiniMap';
 import Overlay from './components/Overlay';
 import { personaById } from './personas';
 
@@ -275,6 +276,10 @@ export default function App() {
           <Icon name="chevron" size={16} />
         </button>
       </header>
+
+      {phase !== 'listening' && phase !== 'thinking' && (
+        <MiniMap language={language} focusId={result?.landmarkId ?? null} />
+      )}
 
       {error && (
         <div className="toast" onClick={() => setError(null)}>
