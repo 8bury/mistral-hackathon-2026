@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ask, MOCK, recap, speechToText, textToSpeech } from './api';
+import { ask, AskError, MOCK, recap, speechToText, textToSpeech } from './api';
 import type { AnswerLanguage, AskResponse, Language, Persona, UserLocation } from './api';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
@@ -88,6 +88,9 @@ export default function App() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const frameRef = useRef<Frame | null>(null);
+  // Last frame the server has for this tour; follow-ups on it omit the image
+  // so the server reuses its grounding instead of re-running vision.
+  const sentFrameRef = useRef<string | null>(null);
   const pressedRef = useRef(false);
   const playerRef = useRef<HTMLAudioElement | null>(null);
   const ownedUrlRef = useRef<string | null>(null);
@@ -195,14 +198,24 @@ export default function App() {
     async (question: string) => {
       setTranscript(question);
       setPhase('thinking');
-      const res = await ask({
-        frame: frameRef.current?.dataUrl ?? '',
+      const frameUrl = frameRef.current?.dataUrl;
+      const isNewFrame = !!frameUrl && frameUrl !== sentFrameRef.current;
+      const req = {
         question,
         persona: personaRef.current,
         language: answerLanguageRef.current,
         tourId,
         location: locationRef.current,
-      });
+      };
+      let res: AskResponse;
+      try {
+        res = await ask({ ...req, frame: isNewFrame ? frameUrl : undefined });
+      } catch (e) {
+        // Server lost the tour (restart / TTL): resend the photo once.
+        if (isNewFrame || !frameUrl || !(e instanceof AskError) || e.code !== 'missing_frame') throw e;
+        res = await ask({ ...req, frame: frameUrl });
+      }
+      sentFrameRef.current = frameUrl ?? sentFrameRef.current;
 
       let audioUrl = res.audioUrl ?? null;
       let ownsUrl = false;

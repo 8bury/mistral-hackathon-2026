@@ -105,9 +105,8 @@ let mockStep = -1;
 export async function ask(req: AskRequest): Promise<AskResponse> {
   if (MOCK_ASK) {
     await delay(900);
-    const frame = req.frame ?? '';
-    if (frame !== mockFrame) {
-      mockFrame = frame;
+    if (req.frame && req.frame !== mockFrame) {
+      mockFrame = req.frame;
       mockStep = (mockStep + 1) % MOCK_WALK.length;
     }
     const landmarkId = MOCK_WALK[mockStep];
@@ -125,10 +124,21 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
     body: JSON.stringify(req),
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => null) as { message?: string; error?: string } | null;
-    throw new Error(body?.message ?? body?.error ?? `Ask failed: ${res.status}`);
+    const body = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
+    throw new AskError(res.status, typeof body?.error === 'string' ? body.error : null, body?.message);
   }
   return res.json();
+}
+
+export class AskError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string | null,
+    serverMessage?: string,
+  ) {
+    // Show the server's explanation when it gave one.
+    super(serverMessage ?? code ?? `Ask failed: ${status}`);
+  }
 }
 
 const MOCK_FACTS: Record<string, Record<Language, string>> = {
