@@ -1,3 +1,7 @@
+// Must stay the first import: modules below (e.g. voxtral.ts) read
+// process.env at load time, so .env has to be applied before they run.
+import './env';
+
 import cors from 'cors';
 import express from 'express';
 

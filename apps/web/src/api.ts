@@ -38,17 +38,20 @@ export interface AskResponse {
 }
 
 const MOCK = import.meta.env.VITE_MOCK_API !== 'false';
+// Mock only /api/ask (agents not wired yet) while STT/TTS hit the real server.
+const MOCK_ASK = MOCK || import.meta.env.VITE_MOCK_ASK === 'true';
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Audio blob -> transcript text. */
-export async function speechToText(audio: Blob): Promise<string> {
+/** Audio blob -> transcript text. `language` is the UI language, used by Voxtral to boost accuracy. */
+export async function speechToText(audio: Blob, language?: Language): Promise<string> {
   if (MOCK) {
     await delay(600);
     return 'Why is the dragon holding a shield?';
   }
-  const res = await fetch(`${API_URL}/api/stt`, {
+  const query = language ? `?language=${encodeURIComponent(language)}` : '';
+  const res = await fetch(`${API_URL}/api/stt${query}`, {
     method: 'POST',
     headers: { 'Content-Type': audio.type || 'application/octet-stream' },
     body: audio,
@@ -57,9 +60,29 @@ export async function speechToText(audio: Blob): Promise<string> {
   return (await res.json()).text;
 }
 
+/**
+ * Text -> spoken answer as a playable object URL (Voxtral TTS, persona voice).
+ * Returns null in mock mode so the frontend stays offline-capable.
+ */
+export async function textToSpeech(
+  text: string,
+  persona: Persona,
+  language: Language,
+): Promise<string | null> {
+  if (MOCK) return null;
+  const res = await fetch(`${API_URL}/api/tts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, persona, language }),
+  });
+  if (!res.ok) throw new Error(`TTS failed: ${res.status}`);
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
 /** Frame + question -> grounded answer. */
 export async function ask(req: AskRequest): Promise<AskResponse> {
-  if (MOCK) {
+  if (MOCK_ASK) {
     await delay(900);
     return {
       box: { x: 380, y: 300, width: 260, height: 320 },
