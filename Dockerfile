@@ -1,5 +1,7 @@
 # Single container: Express API + built PWA served from the same origin.
-FROM node:22-alpine AS build
+# ffmpeg-static ships glibc-compatible native binaries; Alpine's musl runtime
+# cannot run them reliably, so use Debian slim for video-frame extraction.
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/server/package.json apps/server/
@@ -8,9 +10,11 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production PORT=3001
+# Coolify's healthcheck runs curl/wget inside the container; slim has neither.
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/

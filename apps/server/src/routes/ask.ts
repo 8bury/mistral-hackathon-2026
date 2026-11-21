@@ -3,9 +3,9 @@ import { Request, Response } from 'express';
 import { answerQuestion } from '../agents/guide';
 import { groundFrame } from '../agents/grounding';
 import { findLandmarkById } from '../lib/landmarks';
-import { addFrames, addHistory, getTour, recentFrames, setLandmark } from '../lib/store';
+import { addFrames, addHistory, getTour, recentFrames, setGrounding } from '../lib/store';
 import { extractVideoFrames, VideoInputError } from '../lib/video';
-import { parseImageDataUrl, type AskRequest, type AskResponse, type Box2D, type Persona, type Point2D, type UserLocation } from '../types';
+import { parseImageDataUrl, type AskRequest, type AskResponse, type Persona, type UserLocation } from '../types';
 
 /**
  * Accept only a well-formed GPS fix; anything else (missing, non-finite,
@@ -28,8 +28,8 @@ function parseLocation(value: unknown): UserLocation | null {
   return { lat, lng, accuracy };
 }
 
-function parsePersona(value: unknown): Persona {
-  return value === 'child' || value === 'architect' || value === 'historian' ? value : 'historian';
+function parsePersona(value: unknown): Persona | null {
+  return value === 'child' || value === 'architect' || value === 'historian' ? value : null;
 }
 
 function parseLanguage(value: unknown): string {
@@ -47,7 +47,7 @@ function mediaError(reason: 'empty' | 'unsupported_image' | 'video' | 'invalid')
 /**
  * POST /api/ask
  * Body: { frame: base64Jpeg (data URL or raw base64), question, persona, language, tourId, frames?: string[], location?: { lat, lng, accuracy } | null }
- * Response: { box, point, landmarkId, answerText, audioUrl }
+ * Response: { box, point, landmarkId, answerText, followUps, audioUrl }
  *
  * Pipeline: accumulate the tour's photos -> grounding agent (Le Chonk, vision,
  * optionally biased by the visitor's GPS location) -> guide agent (persona +
@@ -63,6 +63,10 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
     const tourId = typeof body.tourId === 'string' && body.tourId.trim() ? body.tourId.trim().slice(0, 100) : 'anonymous';
     const location = parseLocation(body.location);
 
+    if (!persona) {
+      res.status(400).json({ error: 'invalid_persona', message: 'persona must be child, architect, or historian' });
+      return;
+    }
     if (!question || question.length > 2000) {
       res.status(400).json({ error: 'missing_question' });
       return;
@@ -90,7 +94,9 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
         return;
       }
     }
-    if (newFrames.length > 0) addFrames(tour, newFrames);
+    // Drops a resent copy of the photo already analysed, so a follow-up on the
+    // same image neither re-grounds nor fills the buffer with duplicates.
+    const addedFrames = addFrames(tour, newFrames);
     if (recentFrames(tour).length === 0) {
       res.status(400).json({ error: 'missing_frame', message: 'Send at least one supported image on the first question of a tour.' });
       return;
@@ -98,19 +104,18 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
 
     // 1. Ground only when the visitor sends new visual material. Follow-up
     // questions reuse the landmark already identified for this tour.
-    let landmark = findLandmarkById(tour.landmarkId);
-    let box: Box2D | null = null;
-    let point: Point2D | null = null;
-    if (newFrames.length > 0) {
-      const grounding = await groundFrame(newFrames.at(-1)!, question, location);
-      landmark = findLandmarkById(grounding.landmarkId);
-      setLandmark(tour, landmark?.id ?? null);
-      box = grounding.box;
-      point = grounding.point;
+    if (addedFrames.length > 0) {
+      const grounding = await groundFrame(addedFrames.at(-1)!, question, location);
+      setGrounding(tour, {
+        landmarkId: findLandmarkById(grounding.landmarkId)?.id ?? null,
+        box: grounding.box,
+        point: grounding.point,
+      });
     }
+    const landmark = findLandmarkById(tour.landmarkId);
 
     // 2. Guide answers with all recent photos + history.
-    const { answerText } = await answerQuestion({
+    const { answerText, followUps } = await answerQuestion({
       images: recentFrames(tour),
       question,
       persona,
@@ -126,10 +131,11 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
     ]);
 
     const response: AskResponse = {
-      box,
-      point,
+      box: tour.box,
+      point: tour.point,
       landmarkId: landmark?.id ?? null,
       answerText,
+      followUps,
       audioUrl: null,
     };
     res.json(response);

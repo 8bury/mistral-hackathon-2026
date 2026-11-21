@@ -47,11 +47,13 @@ export interface AskResponse {
   point: Point2D | null;
   landmarkId: string | null;
   answerText: string;
+  /** Suggested next questions tailored to this answer; may be empty. */
+  followUps: string[];
   audioUrl: string | null;
 }
 
 // Mocks are OFF by default — opt in with VITE_MOCK_API=true.
-const MOCK = import.meta.env.VITE_MOCK_API === 'true';
+export const MOCK = import.meta.env.VITE_MOCK_API === 'true';
 // Mock only /api/ask (agents not wired yet) while STT/TTS hit the real server.
 const MOCK_ASK = MOCK || import.meta.env.VITE_MOCK_ASK === 'true';
 // Empty = same origin (prod container, or the Vite dev proxy).
@@ -105,9 +107,8 @@ let mockStep = -1;
 export async function ask(req: AskRequest): Promise<AskResponse> {
   if (MOCK_ASK) {
     await delay(900);
-    const frame = req.frame ?? '';
-    if (frame !== mockFrame) {
-      mockFrame = frame;
+    if (req.frame && req.frame !== mockFrame) {
+      mockFrame = req.frame;
       mockStep = (mockStep + 1) % MOCK_WALK.length;
     }
     const landmarkId = MOCK_WALK[mockStep];
@@ -115,6 +116,7 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
       box: { x: 380, y: 300, width: 260, height: 320 },
       point: null,
       landmarkId,
+      followUps: [],
       answerText: landmarkId === 'dragon-boundary' ? mockAnswer(req.persona, mockLanguage(req.language)) : MOCK_FACTS[landmarkId][mockLanguage(req.language)],
       audioUrl: null,
     };
@@ -124,8 +126,22 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
   });
-  if (!res.ok) throw new Error(`Ask failed: ${res.status}`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
+    throw new AskError(res.status, typeof body?.error === 'string' ? body.error : null, body?.message);
+  }
   return res.json();
+}
+
+export class AskError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string | null,
+    serverMessage?: string,
+  ) {
+    // Show the server's explanation when it gave one.
+    super(serverMessage ?? code ?? `Ask failed: ${status}`);
+  }
 }
 
 const MOCK_FACTS: Record<string, Record<Language, string>> = {
