@@ -50,5 +50,6 @@ Next comes a bigger curated landmark database, shareable answer cards, and more 
 
 ## Slide 13 · Try it yourself (after "Thank you")
 Advance to the QR slide and **leave it up for the whole Q&A**.
-"It's live right now: scan the code, allow the camera and mic, and point it at anything.
+"It's live right now: scan the code and allow the camera and mic.
+There's no landmark in this room, so tap the **gallery button** and pick a photo of one: London or anywhere. Then hold the mic and ask.
 Happy to take questions."
