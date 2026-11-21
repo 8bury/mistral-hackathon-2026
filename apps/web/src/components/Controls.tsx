@@ -1,7 +1,8 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 import type { Language } from '../api';
 import type { PersonaTheme } from '../personas';
+import Icon from './Icon';
 
 export type Phase = 'idle' | 'listening' | 'thinking' | 'answer';
 
@@ -10,18 +11,20 @@ interface Props {
   theme: PersonaTheme;
   language: Language;
   level: number; // 0..1 mic level
-  followUps: string[];
+  frozen: boolean;
+  /** Answer panel, shown above the mic. */
+  answer?: ReactNode;
   onTalkStart: () => void;
   onTalkEnd: () => void;
-  onFollowUp: (q: string) => void;
   onBackToLive: () => void;
 }
 
 /** Hold to talk, or quick-tap to toggle (easier while aiming the camera). */
 export default function Controls(props: Props) {
-  const { phase, theme, language, level, followUps } = props;
+  const { phase, theme, language, level, frozen, answer } = props;
   const downAt = useRef(0);
   const tapMode = useRef(false);
+  const es = language === 'es';
 
   const down = () => {
     if (phase === 'thinking') return;
@@ -45,32 +48,24 @@ export default function Controls(props: Props) {
   };
 
   const hint = {
-    idle: language === 'es' ? 'Mantén para preguntar por lo que ves' : 'Hold to ask about what you see',
+    idle: es ? 'Mantén para preguntar por lo que ves' : 'Hold to ask about what you see',
     listening: tapMode.current
-      ? language === 'es' ? 'Escuchando… toca para terminar' : 'Listening… tap to finish'
-      : language === 'es' ? 'Escuchando… suelta para enviar' : 'Listening… release to send',
+      ? es ? 'Escuchando. Toca para terminar' : 'Listening. Tap to finish'
+      : es ? 'Escuchando. Suelta para enviar' : 'Listening. Release to send',
     thinking: theme.thinking[language],
-    answer: language === 'es' ? 'Mantén para preguntar otra cosa' : 'Hold to ask a follow-up',
+    answer: es ? 'Mantén para preguntar otra cosa' : 'Hold to ask a follow-up',
   }[phase];
 
   return (
     <div className="controls">
-      {phase === 'answer' && (
-        <div className="chips">
-          {followUps.map((q) => (
-            <button key={q} className="chip" onClick={() => props.onFollowUp(q)}>
-              {q}
+      {answer}
+      <div className="dock">
+        <span className="dock__side">
+          {frozen && phase !== 'listening' && phase !== 'thinking' && (
+            <button className="pill-btn" onClick={props.onBackToLive}>
+              <Icon name="back" size={18} />
+              {es ? 'Cámara' : 'Camera'}
             </button>
-          ))}
-        </div>
-      )}
-      <div className={`hint ${phase === 'thinking' ? 'is-voice' : ''}`}>
-        {hint}
-      </div>
-      <div className="mic-row">
-        <span className="mic-side">
-          {phase === 'answer' && (
-            <button className="ghost" onClick={props.onBackToLive}>↺ Live</button>
           )}
         </span>
         <button
@@ -80,13 +75,15 @@ export default function Controls(props: Props) {
           onPointerUp={up}
           onPointerCancel={up}
           onContextMenu={(e) => e.preventDefault()}
-          aria-label="Hold to ask"
+          aria-label={es ? 'Mantén para preguntar' : 'Hold to ask'}
+          disabled={phase === 'thinking'}
         >
           <span className="mic__ring" />
-          <span className="mic__icon">{phase === 'thinking' ? theme.avatar : '🎙'}</span>
+          {phase === 'thinking' ? <span className="spinner" /> : <Icon name="mic" size={30} />}
         </button>
-        <span className="mic-side" />
+        <span className="dock__side" />
       </div>
+      <div className="hint">{hint}</div>
     </div>
   );
 }
