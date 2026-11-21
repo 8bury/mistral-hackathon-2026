@@ -2,7 +2,7 @@
 
 **Present:** open `docs/deck/index.html` in a browser. → / Space / click = next, ← = back,
 F = fullscreen, `#5` in the URL jumps to slide 5. Every element builds in with an animation.
-**Static PNGs** (1920×1080, for upload/backup): `docs/deck/slides/slide-01…12.png`.
+**Static PNGs** (1920×1080, for upload/backup): `docs/deck/slides/slide-01…13.png`.
 Regenerate them with `bash docs/deck/render.sh` (headless Chrome).
 Screens on the slides are the real app in mock mode (`docs/design/appllama/implemented/`).
 
@@ -157,3 +157,12 @@ languages) · Later (group tours, AR walking directions, on-device grounding off
 
 **Say:** "We started with one square mile of London. Next is a curated landmark database,
 shareable answer cards and more cities. Point, ask, listen, see. Thank you."
+
+---
+
+## 13 — Try it yourself (leave this up during Q&A)
+On screen: *Scan and walk with Vysta.* QR code → https://vysta.46.225.168.161.sslip.io/ ·
+open it on your phone · allow camera and microphone · point, hold the mic, ask.
+
+**Say:** "It's live right now. Scan the code, allow the camera and mic, and point it at
+anything. We'll take your questions."
