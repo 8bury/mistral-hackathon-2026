@@ -162,7 +162,10 @@ shareable answer cards and more cities. Point, ask, listen, see. Thank you."
 
 ## 13 — Try it yourself (leave this up during Q&A)
 On screen: *Scan and walk with Vysta.* QR code → https://vysta.46.225.168.161.sslip.io/ ·
-open it on your phone · allow camera and microphone · point, hold the mic, ask.
+open it on your phone · allow camera and microphone · point at a landmark **or tap the
+gallery button and pick a photo** · hold the mic and ask. Tip box: no landmark in the room?
+Use a photo of one from your gallery, from London or anywhere.
 
-**Say:** "It's live right now. Scan the code, allow the camera and mic, and point it at
-anything. We'll take your questions."
+**Say:** "It's live right now. Scan the code and allow the camera and mic. There's no landmark in
+this room, so tap the gallery button and pick a photo of one: London or anywhere. Then hold
+the mic and ask. We'll take your questions."
