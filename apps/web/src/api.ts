@@ -50,7 +50,8 @@ export interface AskResponse {
 const MOCK = import.meta.env.VITE_MOCK_API === 'true';
 // Mock only /api/ask (agents not wired yet) while STT/TTS hit the real server.
 const MOCK_ASK = MOCK || import.meta.env.VITE_MOCK_ASK === 'true';
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+// Empty = same origin (prod container, or the Vite dev proxy).
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
