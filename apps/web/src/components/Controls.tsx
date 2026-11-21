@@ -45,7 +45,7 @@ export default function Controls(props: Props) {
   };
 
   const hint = {
-    idle: language === 'es' ? 'Apunta a algo · mantén para preguntar' : 'Point at something · hold to ask',
+    idle: language === 'es' ? 'Mantén para preguntar por lo que ves' : 'Hold to ask about what you see',
     listening: tapMode.current
       ? language === 'es' ? 'Escuchando… toca para terminar' : 'Listening… tap to finish'
       : language === 'es' ? 'Escuchando… suelta para enviar' : 'Listening… release to send',

@@ -65,10 +65,6 @@ export default function Overlay({ box, point, frameSize, theme, children }: Prop
             <i className="c br" />
           </>
         )}
-        {theme.frame === 'blueprint' && box && (
-          <span className="measure">{Math.round(box.width)}×{Math.round(box.height)}</span>
-        )}
-        {theme.frame === 'bouncy' && <span className="sparkle">✨</span>}
       </div>
       {point && (
         <div className="pt" style={{ left: toX(point.x), top: toY(point.y) }}>

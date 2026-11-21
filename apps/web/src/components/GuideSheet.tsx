@@ -16,17 +16,14 @@ export default function GuideSheet({ persona, language, onPick, onLanguage, onCl
     <div className={welcome ? 'welcome' : 'sheet-backdrop'} onClick={welcome ? undefined : onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         {welcome ? (
-          <>
-            <div className="brand">Vysta</div>
-            <h1>{language === 'es' ? 'Elige a tu guía' : 'Choose your guide'}</h1>
-          </>
+          <h1>{language === 'es' ? 'Elige a tu guía' : 'Choose your guide'}</h1>
         ) : (
           <div className="sheet__grab" />
         )}
         <div className="langs">
           {(['en', 'es'] as Language[]).map((l) => (
             <button key={l} className={`lang ${l === language ? 'is-on' : ''}`} onClick={() => onLanguage(l)}>
-              {l === 'en' ? '🇬🇧 English' : '🇪🇸 Español'}
+              {l === 'en' ? 'English' : 'Español'}
             </button>
           ))}
         </div>
