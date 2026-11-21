@@ -1,6 +1,6 @@
-# AI City Guide (hackathon skeleton)
+# Vysta
 
-Voice-asked, visually grounded city guide for the City of London. Point your
+Voice-asked, visually grounded city guide for the City of London (hackathon project). Point your
 camera at a landmark (e.g. a dragon boundary marker), ask a question by
 voice, get a spoken answer in your persona and language — with the exact spot
 highlighted on the frozen frame.
