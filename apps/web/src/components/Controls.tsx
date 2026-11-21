@@ -17,6 +17,8 @@ interface Props {
   onTalkStart: () => void;
   onTalkEnd: () => void;
   onBackToLive: () => void;
+  /** Open the phone gallery picker (image or video). */
+  onGallery: () => void;
 }
 
 /** Hold to talk, or quick-tap to toggle (easier while aiming the camera). */
@@ -81,7 +83,19 @@ export default function Controls(props: Props) {
           <span className="mic__ring" />
           {phase === 'thinking' ? <span className="spinner" /> : <Icon name="mic" size={30} />}
         </button>
-        <span className="dock__side" />
+        <span className="dock__side" style={{ justifyContent: 'flex-end' }}>
+          {phase !== 'listening' && phase !== 'thinking' && (
+            <button
+              className="pill-btn"
+              onClick={props.onGallery}
+              aria-label={es ? 'Abrir galería' : 'Open gallery'}
+              title={es ? 'Subir foto o vídeo' : 'Upload photo or video'}
+            >
+              <Icon name="gallery" size={18} />
+              {es ? 'Galería' : 'Gallery'}
+            </button>
+          )}
+        </span>
       </div>
       <div className="hint">{hint}</div>
     </div>
