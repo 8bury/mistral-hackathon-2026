@@ -2,7 +2,7 @@
 // package is intentionally not created yet). Keep in sync with
 // apps/web/src/api.ts.
 
-export type Persona = 'child' | 'architect' | 'historian';
+export type Persona = 'child' | 'architect' | 'historian' | 'you';
 /** BCP-47 language tag such as en, es, zh, or auto. */
 export type Language = string;
 
@@ -31,6 +31,8 @@ export interface AskRequest {
   frame?: string;
   question: string;
   persona: Persona;
+  /** Visitor-written style instructions; only used with the 'you' persona. */
+  customStyle?: string;
   language: Language;
   tourId: string;
   /** Optional extra photos the user attached this turn. */

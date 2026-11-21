@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vysta — hackathon deck</title>
+<!--
+  Vysta hackathon deck. Open in a browser to present:
+    → / Space / click = next · ← = back · F = fullscreen · #5 = jump to slide 5
+  Static PNGs: bash docs/deck/render.sh  (index.html?static&slide=N, 1920x1080)
+  Screens come from docs/design/appllama/implemented/ (real app, mock mode).
+-->
+<style>
+:root {
+  --bg: #05070a; --ink: #f5f6f8; --ink-2: rgba(235,238,245,.66); --ink-3: rgba(235,238,245,.4);
+  --hair: rgba(255,255,255,.1); --glass: rgba(255,255,255,.05);
+  --gold: #ffd166; --brand: #ff5a1f;
+  --child: #f5a524; --architect: #0091ff; --historian: #b4532a;
+  --font: "SF Pro Display", -apple-system, "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif;
+  --ease: cubic-bezier(.2,.8,.2,1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+body { font-family: var(--font); color: var(--ink); -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; }
+
+/* 1920x1080 stage, scaled to fit the window */
+.stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%); transform-origin: center; background: var(--bg); overflow: hidden; }
+.slide { position: absolute; inset: 0; padding: 110px 120px; opacity: 0; visibility: hidden; transform: scale(1.02);
+  transition: opacity .6s var(--ease), transform .8s var(--ease), visibility 0s .6s; }
+.slide.on { opacity: 1; visibility: visible; transform: none; transition: opacity .6s var(--ease), transform .8s var(--ease); }
+.slide::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(60% 55% at var(--gx, 85%) var(--gy, 0%), var(--glow, rgba(255,90,31,.16)), transparent 70%); }
+
+/* staggered builds: give elements class "b" and style="--i:n" */
+.b { opacity: 0; transform: translateY(24px); }
+.on .b { animation: rise .8s var(--ease) both; animation-delay: calc(var(--i, 0) * 140ms + 250ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.static .b, .static .on .b { animation: none !important; opacity: 1; transform: none; }
+.static .slide { transition: none !important; }
+
+/* type */
+.kicker { font-size: 24px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); position: relative; }
+h1 { font-size: 88px; line-height: 1.02; font-weight: 750; letter-spacing: -0.035em; margin-top: 22px; position: relative; }
+h2 { font-size: 72px; line-height: 1.04; font-weight: 750; letter-spacing: -0.03em; margin-top: 18px; position: relative; }
+h2 em, h1 em { font-style: normal; color: var(--gold); }
+.lede { font-size: 34px; line-height: 1.35; color: var(--ink-2); margin-top: 24px; max-width: 1100px; position: relative; }
+.foot { position: absolute; left: 120px; right: 120px; bottom: 56px; display: flex; justify-content: space-between; font-size: 22px; color: var(--ink-3); }
+
+/* phone frame */
+.phone { position: relative; width: 390px; height: 844px; border-radius: 54px; padding: 10px; background: #0d0f14;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 40px 120px rgba(0,0,0,.7), 0 0 120px rgba(255,90,31,.12); }
+.phone img { display: block; width: 100%; height: 100%; border-radius: 44px; object-fit: cover; }
+.phone.sm { width: 312px; height: 675px; border-radius: 44px; padding: 8px; }
+.phone.sm img { border-radius: 36px; }
+
+/* figurine crops from the real guide picker screenshot (780x1688 @2x) */
+.fig { width: 96px; height: 96px; border-radius: 50%; flex: none; background: url(../design/appllama/implemented/onboarding.png) no-repeat;
+  background-size: 780px 1688px; box-shadow: 0 0 0 3px var(--c), 0 0 30px color-mix(in srgb, var(--c) 40%, transparent); }
+.fig.child { background-position: -59px -762px; }
+.fig.architect { background-position: -59px -941px; }
+.fig.historian { background-position: -59px -1108px; }
+
+/* ---------- 1 · title ---------- */
+.s1 { --gx: 75%; --gy: 40%; --glow: rgba(255,90,31,.22); }
+.s1 .logo { font-size: 180px; font-weight: 800; letter-spacing: -0.05em; line-height: .9; margin-top: 150px; position: relative; }
+.s1 .logo span { color: var(--brand); }
+.s1 .tag { font-size: 56px; font-weight: 600; letter-spacing: -0.02em; margin-top: 26px; position: relative; }
+.s1 .beats { display: flex; gap: 18px; margin-top: 46px; position: relative; }
+.s1 .beats span { font-size: 28px; font-weight: 600; padding: 14px 26px; border-radius: 40px; background: var(--glass); border: 1px solid var(--hair); }
+.s1 .beats span:last-child { color: var(--gold); border-color: rgba(255,209,102,.4); }
+.s1 .phone { position: absolute; right: 200px; top: 118px; transform: rotate(4deg); }
+.on.s1 .phone { animation: rise .9s var(--ease) both .3s, float 6s ease-in-out infinite 1.2s; }
+@keyframes float { 50% { transform: rotate(4deg) translateY(-14px); } }
+.static .s1 .phone { animation: none; transform: rotate(4deg); }
+
+/* ---------- 2 · the moment ---------- */
+.s2 { --gx: 20%; --gy: 100%; }
+.s2 .quote { font-size: 120px; font-weight: 750; letter-spacing: -0.04em; color: var(--gold); margin-top: 60px; position: relative; }
+.s2 .fails { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 70px; position: relative; }
+.card { padding: 34px; border-radius: 28px; background: var(--glass); border: 1px solid var(--hair); position: relative; }
+.card .ico { font-size: 52px; }
+.card b { display: block; font-size: 34px; margin-top: 18px; letter-spacing: -0.02em; }
+.card p { font-size: 26px; line-height: 1.35; color: var(--ink-2); margin-top: 10px; }
+.s2 .fails .card { text-decoration-color: transparent; }
+.s2 .gone, .s3 .gone { position: absolute; left: 120px; bottom: 120px; font-size: 44px; font-weight: 650; color: var(--ink-2); }
+
+/* ---------- 3 · the gap ---------- */
+.matrix { margin-top: 60px; width: 100%; border-collapse: separate; border-spacing: 0 12px; position: relative; font-size: 30px; }
+.matrix th { font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); text-align: center; padding: 0 12px 6px; }
+.matrix th:first-child { text-align: left; }
+.matrix td { padding: 24px 12px; text-align: center; background: var(--glass); border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); font-size: 36px; }
+.matrix td:first-child { text-align: left; padding-left: 34px; border-left: 1px solid var(--hair); border-radius: 22px 0 0 22px; font-size: 32px; font-weight: 600; }
+.matrix td:last-child { border-right: 1px solid var(--hair); border-radius: 0 22px 22px 0; }
+.y { color: #4ade80; } .n { color: rgba(255,255,255,.25); } .p { color: var(--ink-3); font-size: 26px; }
+.matrix tr.us td { background: rgba(255,90,31,.12); border-color: rgba(255,90,31,.5); }
+.matrix tr.us td:first-child { color: var(--brand); }
+
+/* ---------- 4 · personas ---------- */
+.s4 { --gx: 50%; --gy: 0%; --glow: rgba(255,209,102,.12); }
+.people { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 56px; position: relative; }
+.person { padding: 30px; border-radius: 30px; background: var(--glass); border: 1px solid var(--hair); display: flex; flex-direction: column; min-height: 520px; }
+.person .who { font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.person .q { font-size: 30px; font-weight: 600; line-height: 1.25; margin-top: 14px; letter-spacing: -0.015em; }
+.person .guide { display: flex; align-items: center; gap: 18px; margin-top: 30px; padding-top: 26px; border-top: 1px solid var(--hair); }
+.person .guide b { display: block; font-size: 28px; color: var(--c); }
+.person .guide span { display: block; font-size: 21px; color: var(--ink-3); margin-top: 4px; }
+.person .a { margin-top: 24px; font-size: 25px; line-height: 1.4; color: var(--ink-2); font-style: italic; }
+.person .a::before { content: "🔊 "; font-style: normal; }
+.person.es { border-color: rgba(255,209,102,.35); }
+
+/* ---------- 5 · three steps ---------- */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 40px; position: relative; justify-items: center; }
+.step { display: flex; flex-direction: column; align-items: center; }
+.step .n { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; font-weight: 750; background: var(--brand); color: #fff; margin-bottom: 22px; box-shadow: 0 0 30px rgba(255,90,31,.5); }
+.step .t { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; }
+.step .d { font-size: 24px; color: var(--ink-2); margin: 8px 0 26px; text-align: center; }
+.s5 .phone.sm { width: 236px; height: 510px; border-radius: 38px; }
+.s5 .phone.sm img { border-radius: 31px; }
+.s5 .step .d { margin-bottom: 20px; }
+.s5 .steps { margin-top: 24px; }
+
+/* ---------- 6 · magic moment ---------- */
+.s6 { --gx: 25%; --gy: 50%; --glow: rgba(0,145,255,.18); }
+.s6 .phone { position: absolute; left: 180px; top: 118px; }
+.s6 .right { position: absolute; left: 740px; right: 120px; top: 110px; }
+.call { display: flex; gap: 26px; align-items: flex-start; margin-top: 40px; }
+.call .n { width: 56px; height: 56px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 26px; font-weight: 750; border: 2px solid var(--gold); color: var(--gold); }
+.call b { display: block; font-size: 38px; letter-spacing: -0.02em; }
+.call p { font-size: 26px; color: var(--ink-2); margin-top: 6px; line-height: 1.35; }
+.s6 .pitch { margin-top: 56px; font-size: 34px; font-weight: 650; color: var(--gold); }
+
+/* ---------- 7 · the walk ---------- */
+.s7 .phones { position: absolute; right: 150px; top: 120px; display: flex; gap: 40px; }
+.s7 .phones .phone:first-child { margin-top: 70px; }
+.s7 .left { max-width: 800px; position: relative; }
+.list { margin-top: 50px; display: flex; flex-direction: column; gap: 30px; }
+.list div { font-size: 32px; line-height: 1.3; padding-left: 50px; position: relative; }
+.list div::before { content: ""; position: absolute; left: 0; top: 12px; width: 18px; height: 18px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 14px var(--brand); }
+.list div span { color: var(--ink-2); }
+
+/* ---------- 8 · demo divider ---------- */
+.s8 { --gx: 50%; --gy: 50%; --glow: rgba(255,90,31,.25); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.s8 .big { font-size: 200px; font-weight: 800; letter-spacing: -0.05em; position: relative; }
+.s8 .live { display: inline-flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 700; letter-spacing: .14em; color: #ff4d4d; position: relative; }
+.s8 .live i { width: 18px; height: 18px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 20px #ff4d4d; animation: blink 1s ease-in-out infinite alternate; }
+@keyframes blink { to { opacity: .2; } }
+.s8 .beats { display: flex; gap: 16px; margin-top: 60px; position: relative; }
+.s8 .beats span { font-size: 28px; padding: 16px 26px; border-radius: 40px; background: var(--glass); border: 1px solid var(--hair); }
+
+/* ---------- 9 · how it works ---------- */
+.s9 { --gx: 50%; --gy: 100%; --glow: rgba(0,145,255,.14); }
+.flow { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 34px; margin-top: 90px; }
+.flow::before { content: ""; position: absolute; left: 6%; right: 6%; top: 92px; height: 3px; background: linear-gradient(90deg, var(--brand), var(--gold), var(--architect)); opacity: .5; }
+.pulse { position: absolute; top: 84px; left: 6%; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 0 24px 6px rgba(255,209,102,.8); opacity: 0; }
+.on .pulse { animation: travel 3.2s var(--ease) infinite 1.4s; }
+.static .pulse { display: none; }
+@keyframes travel { 0% { left: 6%; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { left: 93%; opacity: 0; } }
+.node { position: relative; text-align: center; }
+.node .ic { width: 184px; height: 184px; margin: 0 auto; border-radius: 40px; display: grid; place-items: center; font-size: 74px; background: #0d1117; border: 1px solid var(--hair); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.node b { display: block; font-size: 30px; margin-top: 26px; letter-spacing: -0.02em; }
+.node .m { display: inline-block; font-size: 21px; font-weight: 650; margin-top: 12px; padding: 6px 14px; border-radius: 20px; background: rgba(255,90,31,.14); color: #ff8a5b; }
+.node p { font-size: 22px; color: var(--ink-2); margin-top: 12px; line-height: 1.35; }
+.stack { position: absolute; left: 120px; right: 120px; bottom: 80px; display: flex; gap: 12px; flex-wrap: nowrap; justify-content: center; }
+.stack span { font-size: 21px; padding: 11px 18px; border-radius: 30px; border: 1px solid var(--hair); color: var(--ink-2); }
+
+/* ---------- 9b · identify, then explain ---------- */
+.s9b { --gx: 50%; --gy: 0%; --glow: rgba(255,209,102,.12); }
+.lanes { display: grid; grid-template-columns: 1fr 120px 1fr; align-items: stretch; margin-top: 54px; position: relative; }
+.lane { padding: 34px 36px; border-radius: 30px; background: var(--glass); border: 1px solid var(--hair); display: flex; flex-direction: column; }
+.lane-h { display: flex; align-items: center; gap: 16px; }
+.lane-h .n { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; font-weight: 750; background: var(--brand); color: #fff; box-shadow: 0 0 24px rgba(255,90,31,.5); }
+.lane-h b { font-size: 40px; letter-spacing: -0.02em; }
+.lane-h .m { margin-left: auto; font-size: 21px; font-weight: 650; padding: 7px 14px; border-radius: 20px; background: rgba(255,90,31,.14); color: #ff8a5b; }
+.ins { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.ins span { font-size: 22px; padding: 9px 16px; border-radius: 22px; border: 1px solid var(--hair); color: var(--ink-2); }
+.out { margin-top: 24px; padding: 20px 22px; border-radius: 18px; background: #0b0e14; border: 1px solid var(--hair); font: 22px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; color: #cfe3ff; }
+.out .k { color: #ff8a5b; } .out .s { color: var(--gold); }
+.out.text { font-family: var(--font); font-size: 24px; color: var(--ink); }
+.out.text i { color: var(--ink-2); }
+.rule { margin-top: auto; padding-top: 22px; font-size: 23px; color: var(--ink-2); display: flex; gap: 12px; align-items: flex-start; line-height: 1.35; }
+.rule::before { content: "✓"; color: #4ade80; font-weight: 800; }
+.rule.alt::before { content: "↺"; color: var(--gold); }
+.hand { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--gold); }
+.hand .arr { font-size: 60px; line-height: 1; }
+.hand span { font-size: 18px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
+.on .hand .arr { animation: nudge 1.6s ease-in-out infinite 1.6s; }
+@keyframes nudge { 50% { transform: translateX(10px); } }
+.static .hand .arr { animation: none; }
+.facts { position: absolute; left: 120px; right: 120px; bottom: 150px; display: flex; gap: 16px; justify-content: center; }
+.facts span { font-size: 24px; padding: 14px 24px; border-radius: 32px; background: var(--glass); border: 1px solid var(--hair); }
+.facts span b { color: var(--gold); }
+
+/* ---------- 10 · proof ---------- */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 56px; position: relative; }
+.tile { padding: 30px 32px; border-radius: 26px; background: var(--glass); border: 1px solid var(--hair); }
+.tile .ico { font-size: 40px; }
+.tile b { display: block; font-size: 30px; margin-top: 14px; letter-spacing: -0.015em; }
+.tile p { font-size: 22px; color: var(--ink-2); margin-top: 8px; line-height: 1.35; }
+
+/* ---------- 11 · roadmap + close ---------- */
+.s11 { --gx: 50%; --gy: 100%; --glow: rgba(255,90,31,.2); }
+.road { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; margin-top: 56px; position: relative; }
+.col { padding: 34px; border-radius: 28px; background: var(--glass); border: 1px solid var(--hair); }
+.col h3 { font-size: 24px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.col.now h3 { color: #4ade80; }
+.col li { list-style: none; font-size: 28px; line-height: 1.35; margin-top: 18px; }
+.close { position: absolute; left: 120px; right: 120px; bottom: 110px; display: flex; justify-content: space-between; align-items: flex-end; }
+.close .line { font-size: 76px; font-weight: 800; letter-spacing: -0.04em; }
+.close .line span { color: var(--brand); }
+.close .thanks { font-size: 30px; color: var(--ink-2); text-align: right; }
+
+/* chrome */
+.progress { position: absolute; left: 0; bottom: 0; height: 6px; background: var(--brand); transition: width .5s var(--ease); z-index: 5; }
+.num { position: absolute; right: 50px; bottom: 40px; font-size: 20px; color: var(--ink-3); z-index: 5; font-variant-numeric: tabular-nums; }
+.static .progress, .static .num { display: none; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+<!-- 1 · TITLE -->
+<section class="slide s1">
+  <div class="kicker b">Mistral Hackathon 2026</div>
+  <div class="logo b" style="--i:1">Vysta<span>.</span></div>
+  <div class="tag b" style="--i:2">The city that answers back.</div>
+  <div class="beats b" style="--i:3"><span>Point</span><span>Ask</span><span>Listen</span><span>See exactly where</span></div>
+  <div class="phone"><img src="../design/appllama/implemented/answer.png" alt="Vysta answer screen"></div>
+  <div class="foot"><span>Voice-first, visually grounded city guide · mobile web</span><span>City of London pilot</span></div>
+</section>
+
+<!-- 2 · WHY: the moment -->
+<section class="slide s2">
+  <div class="kicker b">Why · the moment</div>
+  <h2 class="b" style="--i:1">Saturday in the City. You stop in front of a dragon.</h2>
+  <div class="quote b" style="--i:2">“What <em>is</em> that?”</div>
+  <div class="fails">
+    <div class="card b" style="--i:3"><div class="ico">📖</div><b>The guidebook</b><p>400 pages. None of them about this.</p></div>
+    <div class="card b" style="--i:4"><div class="ico">🎧</div><b>The audio tour</b><p>Talking about something two streets away.</p></div>
+    <div class="card b" style="--i:5"><div class="ico">🔍</div><b>Photo search</b><p>A text card. Which part of the building?</p></div>
+  </div>
+  <div class="gone b" style="--i:7">You give up. The moment is gone.</div>
+</section>
+
+<!-- 3 · WHY: the gap -->
+<section class="slide s3">
+  <div class="kicker b">Why · the gap</div>
+  <h2 class="b" style="--i:1">Tools answer. <em>None of them point.</em></h2>
+  <table class="matrix">
+    <tr class="b" style="--i:2"><th></th><th>Ask out loud</th><th>Answers out loud</th><th>About what you see</th><th>Shows exactly where</th></tr>
+    <tr class="b" style="--i:3"><td>Guidebook</td><td class="n">✕</td><td class="n">✕</td><td class="n">✕</td><td class="n">✕</td></tr>
+    <tr class="b" style="--i:4"><td>Audio tour</td><td class="n">✕</td><td class="y">✓</td><td class="n">✕</td><td class="n">✕</td></tr>
+    <tr class="b" style="--i:5"><td>Visual search apps</td><td class="p">sometimes</td><td class="p">sometimes</td><td class="y">✓</td><td class="n">✕</td></tr>
+    <tr class="b us" style="--i:7"><td>Vysta</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+  </table>
+  <div class="gone b" style="--i:9">Vysta is the layer that <em style="font-style:normal;color:var(--gold)">points</em>: ask by voice, hear the answer, see the spot.</div>
+</section>
+
+<!-- 4 · WHO: personas -->
+<section class="slide s4">
+  <div class="kicker b">Who · personas</div>
+  <h2 class="b" style="--i:1">Same dragon. Four travellers. Four ways to hear it.</h2>
+  <div class="people">
+    <div class="person b" style="--i:2; --c: var(--child)">
+      <div class="who">The 8-year-old</div>
+      <div class="q">“Why is the dragon holding a shield?”</div>
+      <div class="guide"><div class="fig child" style="--c: var(--child)"></div><div><b>Little Soldier</b><span>Playful, short, full of wonder</span></div></div>
+      <div class="a">Look! The dragon is holding a shield because it guards the City of London!</div>
+    </div>
+    <div class="person b" style="--i:3; --c: var(--architect)">
+      <div class="who">The architecture student</div>
+      <div class="q">“What am I actually looking at?”</div>
+      <div class="guide"><div class="fig architect" style="--c: var(--architect)"></div><div><b>The Architect</b><span>Structure, materials, intent</span></div></div>
+      <div class="a">The dragon holds a shield — it is the heraldic emblem of the City of London.</div>
+    </div>
+    <div class="person b" style="--i:4; --c: var(--historian)">
+      <div class="who">The history buff</div>
+      <div class="q">“Who put it there, and why?”</div>
+      <div class="guide"><div class="fig historian" style="--c: var(--historian)"></div><div><b>The Historian</b><span>Dates, patrons, why it matters</span></div></div>
+      <div class="a">This dragon is the guardian of the City; the shield recalls its historic patronage.</div>
+    </div>
+    <div class="person es b" style="--i:5; --c: var(--gold)">
+      <div class="who">The visitor abroad</div>
+      <div class="q">“¿Qué es ese dragón?”</div>
+      <div class="guide"><div class="fig child" style="--c: var(--gold)"></div><div><b>Any guide, en Español</b><span>Asks and hears it in Spanish</span></div></div>
+      <div class="a">¡Mira! El dragón sostiene un escudo porque protege la City de Londres.</div>
+    </div>
+  </div>
+  <div class="foot b" style="--i:7"><span>Same facts, retold per persona · EN / ES</span><span>Sample answers from the app</span></div>
+</section>
+
+<!-- 5 · WHAT: three steps -->
+<section class="slide s5">
+  <div class="kicker b">What · the product</div>
+  <h2 class="b" style="--i:1">The street is the interface.</h2>
+  <div class="steps">
+    <div class="step b" style="--i:2"><div class="n">1</div><div class="t">Point</div><div class="d">Live camera, or a photo from your gallery</div><div class="phone sm"><img src="../design/appllama/implemented/dock.png" alt=""></div></div>
+    <div class="step b" style="--i:4"><div class="n">2</div><div class="t">Ask</div><div class="d">Hold the mic and just say it</div><div class="phone sm"><img src="../design/appllama/implemented/listening.png" alt=""></div></div>
+    <div class="step b" style="--i:6"><div class="n">3</div><div class="t">See + hear</div><div class="d">The spot lights up; your guide answers</div><div class="phone sm"><img src="../design/appllama/implemented/answer.png" alt=""></div></div>
+  </div>
+</section>
+
+<!-- 6 · WHAT: the magic moment -->
+<section class="slide s6">
+  <div class="phone b"><img src="../design/appllama/implemented/answer.png" alt=""></div>
+  <div class="right">
+    <div class="kicker b" style="--i:1">What · the magic moment</div>
+    <h2 class="b" style="--i:2">The dragon lights up and tells you its story.</h2>
+    <div class="call b" style="--i:3"><div class="n">1</div><div><b>The frame freezes</b><p>No more aiming. You and the guide look at the same picture.</p></div></div>
+    <div class="call b" style="--i:4"><div class="n">2</div><div><b>The exact spot is highlighted</b><p>Box, label and pulsing point on what the answer is about.</p></div></div>
+    <div class="call b" style="--i:5"><div class="n">3</div><div><b>Your guide answers out loud</b><p>In their own voice; the caption reveals word by word.</p></div></div>
+    <div class="call b" style="--i:6"><div class="n">4</div><div><b>One tap to go deeper</b><p>AI follow-up questions tailored to this answer.</p></div></div>
+    <div class="pitch b" style="--i:8">That five-second moment is the whole pitch.</div>
+  </div>
+</section>
+
+<!-- 7 · WHAT: the walk -->
+<section class="slide s7">
+  <div class="left">
+    <div class="kicker b">What · the walk</div>
+    <h2 class="b" style="--i:1">Every question becomes a stop on your walk.</h2>
+    <div class="list">
+      <div class="b" style="--i:2">Nearest landmark and distance, always on screen <span>· tap for the map</span></div>
+      <div class="b" style="--i:3">Your route drawn as you ask <span>· GPS-aware answers</span></div>
+      <div class="b" style="--i:4">A recap page at the end <span>· stats, timeline, the guide's summary</span></div>
+      <div class="b" style="--i:5">Share my walk <span>· the takeaway</span></div>
+    </div>
+  </div>
+  <div class="phones">
+    <div class="phone sm b" style="--i:3"><img src="../design/appllama/implemented/map.png" alt=""></div>
+    <div class="phone sm b" style="--i:5"><img src="../design/appllama/implemented/recap.png" alt=""></div>
+  </div>
+</section>
+
+<!-- 8 · DEMO -->
+<section class="slide s8">
+  <div class="live b"><i></i>LIVE</div>
+  <div class="big b" style="--i:1">Demo</div>
+  <div class="beats b" style="--i:3"><span>Pick a guide · Español</span><span>Hold · ask · release</span><span>Highlight + voice</span><span>Follow-up</span><span>Recap</span></div>
+</section>
+
+<!-- 9 · HOW -->
+<section class="slide s9">
+  <div class="kicker b">How · all Mistral, end to end</div>
+  <h2 class="b" style="--i:1">Five steps from a question to a spoken answer.</h2>
+  <div class="flow">
+    <div class="pulse"></div>
+    <div class="node b" style="--i:2"><div class="ic">🎙️</div><b>You ask</b><p>Push-to-talk in the browser, frame frozen on press</p></div>
+    <div class="node b" style="--i:3"><div class="ic">📝</div><b>Hear it</b><span class="m">Voxtral Transcribe</span><p>Speech → text, EN / ES</p></div>
+    <div class="node b" style="--i:4"><div class="ic">🎯</div><b>Find it</b><span class="m">Mistral Medium · vision</span><p>Box + point on the frame, nearby landmarks from GPS</p></div>
+    <div class="node b" style="--i:5"><div class="ic">💬</div><b>Explain it</b><span class="m">Mistral Large</span><p>Persona answer + follow-up questions</p></div>
+    <div class="node b" style="--i:6"><div class="ic">🔊</div><b>Say it</b><span class="m">Voxtral TTS</span><p>A different voice for each guide</p></div>
+  </div>
+  <div class="stack b" style="--i:8"><span>Vite + React PWA</span><span>getUserMedia · MediaRecorder</span><span>Express API</span><span>Normalised 0–1000 overlay</span><span>One Docker container</span><span>Offline mock mode for demos</span></div>
+</section>
+
+<!-- 9b · HOW: identify, then explain -->
+<section class="slide s9b">
+  <div class="kicker b">How · identify, then explain</div>
+  <h2 class="b" style="--i:1">How it knows what you're looking at.</h2>
+  <div class="lanes">
+    <div class="lane b" style="--i:2">
+      <div class="lane-h"><span class="n">1</span><b>Identify</b><span class="m">Mistral Medium · vision</span></div>
+      <div class="ins"><span>📷 Frozen photo</span><span>🗣️ Your question</span><span>📍 GPS → nearby shortlist</span></div>
+      <div class="out">{ <span class="k">"landmarkId"</span>: <span class="s">"dragon-boundary"</span>,<br>&nbsp;&nbsp;<span class="k">"box_2d"</span>: {x, y, width, height},<br>&nbsp;&nbsp;<span class="k">"point_2d"</span>: {x, y} }&nbsp;&nbsp;<i style="color:var(--ink-3)">// 0–1000</i></div>
+      <div class="rule">Picks only from our checked landmark list; the server rejects anything else</div>
+    </div>
+    <div class="hand b" style="--i:4"><div class="arr">→</div><span>landmark<br>+ spot</span></div>
+    <div class="lane b" style="--i:5">
+      <div class="lane-h"><span class="n">2</span><b>Explain</b><span class="m">Mistral Large</span></div>
+      <div class="ins"><span>✅ Verified fact for that landmark</span><span>🖼️ Your recent photos</span><span>🎭 Guide + language</span><span>💬 The chat so far</span></div>
+      <div class="out text">An answer in your guide's voice<br><i>+ 3 follow-up questions, written for this answer</i></div>
+      <div class="rule alt">Not on the list? It names the building from the photo and its own knowledge</div>
+    </div>
+  </div>
+  <div class="facts b" style="--i:7"><span><b>Facts:</b> curated EN / ES landmark file + Mistral Large</span><span><b>Follow-ups</b> reuse the identification: no second vision call</span></div>
+</section>
+
+<!-- 10 · PROOF -->
+<section class="slide s10">
+  <div class="kicker b">Proof · built at the hackathon</div>
+  <h2 class="b" style="--i:1">Working today, end to end.</h2>
+  <div class="tiles">
+    <div class="tile b" style="--i:2"><div class="ico">🔁</div><b>Full voice loop</b><p>Talk → transcribe → ground → answer → speak</p></div>
+    <div class="tile b" style="--i:3"><div class="ico">🎭</div><b>3 guides × 2 languages</b><p>Own voice, tone and theme each, EN / ES</p></div>
+    <div class="tile b" style="--i:4"><div class="ico">📍</div><b>GPS-aware grounding</b><p>Nearby landmarks steer what it recognises</p></div>
+    <div class="tile b" style="--i:5"><div class="ico">🖼️</div><b>Gallery photos & video</b><p>Ask about what you shot earlier</p></div>
+    <div class="tile b" style="--i:6"><div class="ico">✨</div><b>AI follow-ups</b><p>Next questions tailored to each answer</p></div>
+    <div class="tile b" style="--i:7"><div class="ico">🗺️</div><b>Map + walk recap</b><p>Route, stops, summary, share</p></div>
+    <div class="tile b" style="--i:8"><div class="ico">🧍</div><b>“You” figurine</b><p>Personalised from a quick face scan</p></div>
+    <div class="tile b" style="--i:9"><div class="ico">📴</div><b>Offline mock mode</b><p>Demo never depends on venue Wi-Fi</p></div>
+    <div class="tile b" style="--i:10"><div class="ico">🐳</div><b>One-container deploy</b><p>API + PWA on the same origin</p></div>
+  </div>
+</section>
+
+<!-- 11 · ROADMAP + CLOSE -->
+<section class="slide s11">
+  <div class="kicker b">Next · from one street to every city</div>
+  <div class="road">
+    <div class="col now b" style="--i:1"><h3>Now</h3><ul><li>City of London pilot</li><li>Dragon boundary marker, St Paul's, Leadenhall Market</li></ul></div>
+    <div class="col b" style="--i:2"><h3>Next</h3><ul><li>Curated landmark database</li><li>Shareable answer cards</li><li>More cities and languages</li></ul></div>
+    <div class="col b" style="--i:3"><h3>Later</h3><ul><li>Group tours</li><li>AR walking directions</li><li>On-device grounding, offline</li></ul></div>
+  </div>
+  <div class="close">
+    <div class="line b" style="--i:5">Point. Ask. Listen. <span>See.</span></div>
+    <div class="thanks b" style="--i:6">Vysta<br>Thank you</div>
+  </div>
+</section>
+
+<div class="progress" id="progress"></div>
+<div class="num" id="num"></div>
+</div>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+const params = new URLSearchParams(location.search);
+const isStatic = params.has('static');
+if (isStatic) document.body.classList.add('static');
+let cur = 0;
+
+function fit() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  document.getElementById('stage').style.transform = `translate(-50%, -50%) scale(${s})`;
+}
+function show(i) {
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((el, k) => el.classList.toggle('on', k === cur));
+  document.getElementById('progress').style.width = `${((cur + 1) / slides.length) * 100}%`;
+  document.getElementById('num').textContent = `${cur + 1} / ${slides.length}`;
+  if (!isStatic) history.replaceState(null, '', `#${cur + 1}`);
+}
+addEventListener('resize', fit);
+addEventListener('keydown', (e) => {
+  if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+  if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+  if (e.key === 'Home') show(0);
+  if (e.key === 'End') show(slides.length - 1);
+  if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+});
+addEventListener('click', (e) => show(cur + (e.clientX < innerWidth / 4 ? -1 : 1)));
+let tx = null;
+addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; });
+addEventListener('touchend', (e) => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 40) show(cur + (dx < 0 ? 1 : -1)); tx = null; });
+
+fit();
+show((Number(params.get('slide')) || Number(location.hash.slice(1)) || 1) - 1);
+</script>
+</body>
+</html>
