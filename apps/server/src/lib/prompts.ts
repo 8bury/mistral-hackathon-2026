@@ -96,7 +96,7 @@ export function guideSystemPrompt(opts: {
     'Operational rules:',
     `- The visitor's photos from this tour are attached to the user message as images. Look at them before answering.`,
     language === 'auto'
-      ? `- Detect the language of the visitor's latest question and reply in that same language. Do not mention language detection.`
+      ? `- Detect the language of the visitor's latest question and reply in that same language. If the visitor explicitly asks for a different answer language (for example, "answer in Chinese"), honor that request. Do not mention language detection.`
       : `- Answer in ${LANGUAGE_NAMES[language] ?? language} (${language}). If the visitor asks in a different language, follow their requested language when it is unambiguous.`,
     `- Use the curated fact below when it covers the question. For time-sensitive details such as today's opening hours, say that the visitor should verify with the venue's official site.`,
     `- Keep the answer to at most 3 sentences and end with one follow-up question the visitor might ask next.`,
