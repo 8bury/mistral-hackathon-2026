@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import type { Stop } from '../walk';
 
-import type { Language } from '../api';
+import type { Language, UserLocation } from '../api';
 import Figurine from './Figurines';
 import Icon from './Icon';
 
@@ -129,11 +129,19 @@ interface Props {
   onRecap: () => Promise<string>;
   heading: number;
   face: string | null;
+  /** Live GPS fix; drawn on the map when it falls inside the mapped area. */
+  location: UserLocation | null;
 }
+
+/** Real GPS is used for "you are here" only within this margin of the map. */
+const onMap = (l: UserLocation) => {
+  const { x, y } = project(l.lat, l.lng);
+  return x > -W * 0.25 && x < W * 1.25 && y > -H * 0.25 && y < H * 1.25;
+};
 
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-export default function MiniMap({ language, focusId, stops, onRecap, heading, face }: Props) {
+export default function MiniMap({ language, focusId, stops, onRecap, heading, face, location }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'nearby' | 'walk'>('nearby');
   const [picked, setPicked] = useState<string | null>(null);
@@ -143,7 +151,14 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
 
   const route = routeOf(stops);
   const last = route.at(-1);
-  const me: Me = last ? { lat: last.lat, lng: last.lng, x: last.x + 18, y: last.y + 22 } : BANK;
+  const gps = location && onMap(location) ? location : null;
+  const me: Me = gps
+    ? { lat: gps.lat, lng: gps.lng, ...project(gps.lat, gps.lng) }
+    : last
+      ? { lat: last.lat, lng: last.lng, x: last.x + 18, y: last.y + 22 }
+      : BANK;
+  // Outside the City: say how far away the visitor is instead of faking it silently.
+  const farAway = location && !gps ? metres(location, BANK) : null;
   const sorted = [...PLACES].sort((a, b) => metres(me, a) - metres(me, b));
   const selected = picked ?? focusId;
   const nameOf = (id: string | null) => PLACES.find((p) => p.id === id)?.name ?? (es ? 'Sin lugar' : 'Unplaced');
@@ -185,6 +200,13 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
           </div>
 
           <div className="map-list">
+            {farAway != null && (
+              <p className="map-note">
+                {es
+                  ? `Estás a ${fmt(farAway)} de la City de Londres: el mapa muestra una posición de demostración.`
+                  : `You're ${fmt(farAway)} from the City of London, so the map shows a demo position.`}
+              </p>
+            )}
             {tab === 'nearby' &&
               sorted.map((p) => (
                 <button key={p.id} className={`map-row ${p.id === selected ? 'is-on' : ''}`} onClick={() => setPicked(p.id)}>

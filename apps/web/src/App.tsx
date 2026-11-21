@@ -53,6 +53,7 @@ export default function App() {
   // Latest GPS fix (accuracy in metres). Stays null until a fix arrives or when
   // permission is denied; the app keeps working and simply sends no location.
   const locationRef = useRef<UserLocation | null>(null);
+  const [location, setLocation] = useState<UserLocation | null>(null);
 
   const [tourId] = useState(newTourId);
   const [persona, setPersona] = useState<Persona>((store.get('vysta.persona') as Persona) ?? 'child');
@@ -95,11 +96,15 @@ export default function App() {
         const { latitude, longitude, accuracy } = pos.coords;
         if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(accuracy)) {
           locationRef.current = { lat: latitude, lng: longitude, accuracy };
+          setLocation(locationRef.current);
         }
       },
       (err) => {
         // Keep the last good fix on transient timeouts/unavailability; drop it only if revoked.
-        if (err.code === err.PERMISSION_DENIED) locationRef.current = null;
+        if (err.code === err.PERMISSION_DENIED) {
+          locationRef.current = null;
+          setLocation(null);
+        }
       },
       { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 },
     );
@@ -301,7 +306,7 @@ export default function App() {
 
   return (
     <div className="app" data-persona={persona}>
-      <CameraView ref={cameraRef} onError={() => {}} />
+      <CameraView ref={cameraRef} onError={setError} />
       {frozenFrame && <img className="frozen" src={frozenFrame.dataUrl} alt="Frozen camera frame" />}
       {phase === 'idle' && <div className="reticle" />}
       {phase === 'thinking' && <div className="scan" />}
@@ -332,6 +337,7 @@ export default function App() {
           stops={stops}
           heading={heading}
           face={face}
+          location={location}
           onRecap={() =>
             recap(
               tourId,
