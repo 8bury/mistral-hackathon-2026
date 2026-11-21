@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ask, recap, speechToText, textToSpeech } from './api';
-import type { AskResponse, Language, Persona } from './api';
+import type { AskResponse, Language, Persona, UserLocation } from './api';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
@@ -50,6 +50,9 @@ export default function App() {
   const playerRef = useRef<HTMLAudioElement | null>(null);
   const ownedUrlRef = useRef<string | null>(null);
   const speakTimer = useRef<number>();
+  // Latest GPS fix (accuracy in metres). Stays null until a fix arrives or when
+  // permission is denied; the app keeps working and simply sends no location.
+  const locationRef = useRef<UserLocation | null>(null);
 
   const [tourId] = useState(newTourId);
   const [persona, setPersona] = useState<Persona>((store.get('vysta.persona') as Persona) ?? 'child');
@@ -76,6 +79,26 @@ export default function App() {
   const [face, setFace] = useState<string | null>(() => store.get('vysta.face'));
   const [faceOpen, setFaceOpen] = useState(false);
   const { heading, needsPermission, requestMotion } = useHeading();
+
+  // Track the visitor's position while the app runs so /api/ask can ground the
+  // answer in nearby landmarks. Non-fatal: any failure leaves locationRef null.
+  useEffect(() => {
+    if (!('geolocation' in navigator)) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(accuracy)) {
+          locationRef.current = { lat: latitude, lng: longitude, accuracy };
+        }
+      },
+      (err) => {
+        // Keep the last good fix on transient timeouts/unavailability; drop it only if revoked.
+        if (err.code === err.PERMISSION_DENIED) locationRef.current = null;
+      },
+      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 },
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
 
   useEffect(() => store.set('vysta.persona', persona), [persona]);
   useEffect(() => store.set('vysta.lang', language), [language]);
@@ -118,6 +141,7 @@ export default function App() {
         persona: personaRef.current,
         language: languageRef.current,
         tourId,
+        location: locationRef.current,
       });
 
       let audioUrl = res.audioUrl ?? null;
