@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+.spot { position: absolute; inset: 0; background: radial-gradient(circle at 195px 330px, rgba(5,7,10,0) 0, rgba(5,7,10,0) 92px, rgba(5,7,10,.74) 210px); }
+.box { position: absolute; left: 131px; top: 266px; width: 128px; height: 128px; border-radius: 22px;
+  border: 1.5px solid rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.25), 0 0 32px rgba(255,90,31,.35), inset 0 0 24px rgba(255,255,255,.08); }
+.label { position: absolute; left: 50%; top: 222px; transform: translateX(-50%); height: 30px; padding: 0 12px 0 10px; font-size: 13px; font-weight: 600; }
+.label b { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.label span { color: var(--ink-3); font-weight: 500; }
+.top { position: absolute; top: 58px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+.ib { width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; }
+.ib i { width: 18px; height: 18px; }
+.persona { height: 36px; padding: 0 14px 0 6px; border-radius: 18px; display: flex; align-items: center; gap: 8px; font: 600 14px/1 var(--font); }
+.persona .av { width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: rgba(255,90,31,.2); box-shadow: inset 0 0 0 1px rgba(255,90,31,.5); font-size: 14px; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 372px; border-radius: 30px 30px 0 0; padding: 0 22px; border-bottom: 0; }
+.meta { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; }
+h1 { margin-top: 8px; font: 650 27px/1.1 var(--font); letter-spacing: -0.025em; color: var(--accent-text); }
+.q { margin-top: 12px; display: flex; gap: 8px; align-items: center; font: italic 400 15px/1.35 var(--font); color: var(--ink-2); }
+.q i { width: 14px; height: 14px; color: var(--ink-3); flex: none; }
+.a { margin-top: 12px; font: 400 16.5px/1.5 var(--font); color: rgba(245,246,248,.92); }
+.a em { font-style: normal; color: #fff; font-weight: 600; }
+.row { position: absolute; left: 22px; right: 0; bottom: 34px; display: flex; gap: 8px; }
+.play { height: 40px; padding: 0 14px 0 6px; border-radius: 20px; display: flex; align-items: center; gap: 10px; background: var(--accent); color: #fff;
+  box-shadow: 0 6px 20px rgba(255,90,31,.35), inset 0 1px 0 rgba(255,255,255,.3); font: 600 14px/1 var(--font); flex: none; }
+.play .c { width: 28px; height: 28px; border-radius: 14px; background: rgba(0,0,0,.2); display: grid; place-items: center; }
+.play .c i { width: 15px; height: 15px; }
+.wave { display: flex; gap: 2px; align-items: center; }
+.wave s { width: 2.5px; border-radius: 2px; background: rgba(255,255,255,.85); }
+.fu { height: 40px; border-radius: 20px; padding: 0 14px; background: rgba(255,255,255,.07); border: 1px solid var(--hair); font: 500 14px/40px var(--font); white-space: nowrap; color: var(--ink); }
+.icons { display: flex; gap: 6px; }
+.icons .ib { width: 32px; height: 32px; background: rgba(255,255,255,.06); border: 1px solid var(--hair); }
+.icons i { width: 15px; height: 15px; color: var(--ink-2); }
+</style></head>
+<body data-persona="architect"><div class="phone">
+<img class="scene" src="scene.svg">
+<div class="spot"></div>
+<div class="box"></div>
+<div class="pin" style="left:195px;top:330px"></div>
+<div class="chip glass-dark label"><b></b>Rose window <span>· c. 1225</span></div>
+<div class="status"></div>
+<div class="top">
+  <div class="ib glass-dark"><i data-i="close"></i></div>
+  <div class="persona glass-dark"><span class="av">📐</span>The Architect</div>
+  <div class="ib glass-dark"><i data-i="share"></i></div>
+</div>
+<div class="sheet glass-dark">
+  <div class="grabber"></div>
+  <div class="meta"><span class="eyebrow">Notre-Dame · West façade</span>
+    <div class="icons"><div class="ib"><i data-i="bookmark"></i></div><div class="ib"><i data-i="map"></i></div></div></div>
+  <h1>The Rose Window</h1>
+  <div class="q"><i data-i="mic"></i>“What's that big round window?”</div>
+  <p class="a">A 9.6&nbsp;m wheel of <em>stone tracery</em>: radiating spokes carry the glass, so the wall can be almost all light. It's the structural trick that made Gothic façades possible.</p>
+  <div class="row">
+    <div class="play"><span class="c"><i data-i="replay"></i></span>
+      <span class="wave"><s style="height:8px"></s><s style="height:14px"></s><s style="height:10px"></s><s style="height:18px"></s><s style="height:12px"></s><s style="height:7px"></s><s style="height:15px"></s><s style="height:9px"></s></span>0:14</div>
+    <div class="fu">What is it made of?</div>
+    <div class="fu">Who designed it?</div>
+  </div>
+  <div class="home"></div>
+</div>
+</div><script src="common.js"></script></body></html>

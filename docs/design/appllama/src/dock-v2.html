@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+/* v2 — single floating glass capsule (Vision Pro-style) + mode row; map/compass merged into one top-right widget */
+.scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 260px; background: linear-gradient(180deg, rgba(5,7,10,0), rgba(5,7,10,.75)); }
+.top { position: absolute; top: 58px; left: 16px; right: 16px; display: flex; justify-content: space-between; }
+.persona { height: 40px; padding: 0 14px 0 5px; border-radius: 20px; display: flex; align-items: center; gap: 9px; font: 600 14px/1 var(--font); }
+.persona .av { width: 30px; height: 30px; border-radius: 15px; display: grid; place-items: center; font-size: 16px; background: rgba(142,27,27,.35); box-shadow: inset 0 0 0 1.5px rgba(224,128,106,.6); }
+.widget { height: 40px; border-radius: 20px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 6px; font: 600 13px/1 var(--font); }
+.widget .n { width: 28px; height: 28px; border-radius: 14px; background: rgba(255,255,255,.08); display: grid; place-items: center; }
+.widget .n i { width: 16px; height: 16px; transform: rotate(-20deg); }
+.widget small { color: var(--ink-3); font-weight: 500; }
+.toast { position: absolute; left: 50%; bottom: 196px; transform: translateX(-50%); height: 34px; padding: 0 14px; border-radius: 17px; display: flex; align-items: center; gap: 8px; font: 500 13.5px/1 var(--font); white-space: nowrap; }
+.toast b { width: 6px; height: 6px; border-radius: 3px; background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+.cap { position: absolute; left: 50%; bottom: 92px; width: 272px; height: 84px; margin-left: -136px; border-radius: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }
+.side { width: 56px; height: 56px; border-radius: 28px; display: grid; place-items: center; background: rgba(255,255,255,.08); border: 1px solid var(--hair); }
+.side i { width: 22px; height: 22px; }
+.mic { width: 68px; height: 68px; border-radius: 34px; display: grid; place-items: center; background: #fff; color: #0b0d12; box-shadow: 0 0 0 4px rgba(224,128,106,.35), 0 8px 24px rgba(0,0,0,.45); }
+.mic i { width: 30px; height: 30px; }
+.modes { position: absolute; left: 0; right: 0; bottom: 46px; display: flex; justify-content: center; gap: 26px; font: 600 12.5px/1 var(--font); letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.modes .on { color: var(--accent-text); position: relative; }
+.modes .on::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 4px; height: 4px; margin-left: -2px; border-radius: 2px; background: var(--accent-text); }
+</style></head>
+<body data-persona="historian"><div class="phone">
+<img class="scene" src="scene.svg">
+<div class="scrim"></div>
+<div class="status"></div>
+<div class="top">
+  <div class="persona glass-dark"><span class="av">📜</span>The Historian</div>
+  <div class="widget glass-dark"><span class="n"><i data-i="compass"></i></span>Notre-Dame <small>120 m</small></div>
+</div>
+<div class="toast glass-dark"><b></b>Landmark in view · hold to ask</div>
+<div class="cap glass">
+  <div class="side"><i data-i="flip"></i></div>
+  <div class="mic"><i data-i="micFill"></i></div>
+  <div class="side"><i data-i="image"></i></div>
+</div>
+<div class="modes"><span>Map</span><span class="on">Ask</span><span>Recap</span></div>
+<div class="home"></div>
+</div><script src="common.js"></script></body></html>
