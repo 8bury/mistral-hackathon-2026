@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { Stop } from '../walk';
 
 import type { Language, UserLocation } from '../api';
+import type { FaceFeatures } from '../faceFeatures';
 import Figurine from './Figurines';
 import Icon from './Icon';
 
@@ -65,7 +66,7 @@ const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }
 };
 const fmt = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
 
-function MapArt({ focusId, span, labels, me, route, heading, face }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[]; heading: number; face: string | null }) {
+function MapArt({ focusId, span, labels, me, route, heading, face, faceFeatures }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[]; heading: number; face: string | null; faceFeatures: FaceFeatures | null }) {
   const ME = me;
   const focus = PLACES.find((p) => p.id === focusId) ?? ME;
   const order = (id: string) => route.findIndex((p) => p.id === id) + 1;
@@ -112,7 +113,7 @@ function MapArt({ focusId, span, labels, me, route, heading, face }: { focusId: 
           <circle r={labels ? 11 : 15} className="m-me__dot" />
           {labels && (
             <g transform="translate(-26 -66)">
-              <Figurine id="generic" faceImage={face} size={52} />
+              <Figurine id="generic" faceImage={face} features={faceFeatures} size={52} />
             </g>
           )}
         </g>
@@ -129,6 +130,8 @@ interface Props {
   onRecap: () => Promise<string>;
   heading: number;
   face: string | null;
+  /** Analyzed face-scan features for the personalized "You" figurine. */
+  faceFeatures: FaceFeatures | null;
   /** Live GPS fix; drawn on the map when it falls inside the mapped area. */
   location: UserLocation | null;
 }
@@ -141,7 +144,7 @@ const onMap = (l: UserLocation) => {
 
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-export default function MiniMap({ language, focusId, stops, onRecap, heading, face, location }: Props) {
+export default function MiniMap({ language, focusId, stops, onRecap, heading, face, faceFeatures, location }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'nearby' | 'walk'>('nearby');
   const [picked, setPicked] = useState<string | null>(null);
@@ -177,13 +180,13 @@ export default function MiniMap({ language, focusId, stops, onRecap, heading, fa
   return (
     <>
       <button className="minimap" onClick={() => setOpen(true)} aria-label={es ? 'Abrir mapa' : 'Open map'}>
-        <MapArt focusId={focusId} span={320} labels={false} me={me} route={route} heading={heading} face={face} />
+        <MapArt focusId={focusId} span={320} labels={false} me={me} route={route} heading={heading} face={face} faceFeatures={faceFeatures} />
         {stops.length > 0 && <span className="minimap__count">{stops.length}</span>}
       </button>
 
       {open && (
         <div className="map-sheet">
-          <MapArt focusId={selected} span={560} labels me={me} route={route} heading={heading} face={face} />
+          <MapArt focusId={selected} span={560} labels me={me} route={route} heading={heading} face={face} faceFeatures={faceFeatures} />
           <div className="map-top">
             <div className="seg" role="tablist">
               <button role="tab" aria-selected={tab === 'nearby'} className={tab === 'nearby' ? 'is-on' : ''} onClick={() => setTab('nearby')}>
