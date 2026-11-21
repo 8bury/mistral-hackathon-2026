@@ -51,7 +51,7 @@ export default function Overlay({ box, point, frameSize, theme, children }: Prop
   const anchorX = Math.min(Math.max(rect.x + rect.w / 2, 40), w - 40);
 
   return (
-    <div className="overlay" style={{ ['--accent' as string]: theme.accent }}>
+    <div className="overlay">
       <div
         key={`${rect.x}-${rect.y}-${theme.id}`}
         className={`hl hl--${theme.frame}`}
@@ -64,6 +64,17 @@ export default function Overlay({ box, point, frameSize, theme, children }: Prop
             <i className="c bl" />
             <i className="c br" />
           </>
+        )}
+        {theme.frame === 'drafting' && (
+          <>
+            <span className="dim dim--w" />
+            <span className="dim dim--h" />
+          </>
+        )}
+        {theme.frame === 'ink' && (
+          <svg className="ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <path pathLength={1} d="M52 4 C80 3 97 22 96 50 C95 79 76 97 48 96 C20 95 3 77 4 49 C5 24 22 6 56 7 C70 8 82 14 88 22" />
+          </svg>
         )}
       </div>
       {point && (

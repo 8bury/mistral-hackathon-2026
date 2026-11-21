@@ -32,7 +32,7 @@ export default function GuideSheet({ persona, language, onPick, onLanguage, onCl
             <button
               key={p.id}
               className={`guide ${p.id === persona ? 'is-on' : ''}`}
-              style={{ ['--accent' as string]: p.accent, fontFamily: p.font }}
+              data-persona={p.id}
               onClick={() => onPick(p.id)}
             >
               <span className="guide__avatar">{p.avatar}</span>

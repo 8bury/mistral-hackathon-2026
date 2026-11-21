@@ -64,7 +64,7 @@ export default function Controls(props: Props) {
           ))}
         </div>
       )}
-      <div className="hint" style={{ fontFamily: phase === 'thinking' ? theme.font : undefined }}>
+      <div className={`hint ${phase === 'thinking' ? 'is-voice' : ''}`}>
         {hint}
       </div>
       <div className="mic-row">
