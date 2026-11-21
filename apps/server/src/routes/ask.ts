@@ -47,7 +47,7 @@ function mediaError(reason: 'empty' | 'unsupported_image' | 'video' | 'invalid')
 /**
  * POST /api/ask
  * Body: { frame: base64Jpeg (data URL or raw base64), question, persona, language, tourId, frames?: string[], location?: { lat, lng, accuracy } | null }
- * Response: { box, point, landmarkId, answerText, audioUrl }
+ * Response: { box, point, landmarkId, answerText, followUps, audioUrl }
  *
  * Pipeline: accumulate the tour's photos -> grounding agent (Le Chonk, vision,
  * optionally biased by the visitor's GPS location) -> guide agent (persona +
@@ -115,7 +115,7 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
     const landmark = findLandmarkById(tour.landmarkId);
 
     // 2. Guide answers with all recent photos + history.
-    const { answerText } = await answerQuestion({
+    const { answerText, followUps } = await answerQuestion({
       images: recentFrames(tour),
       question,
       persona,
@@ -135,6 +135,7 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
       point: tour.point,
       landmarkId: landmark?.id ?? null,
       answerText,
+      followUps,
       audioUrl: null,
     };
     res.json(response);

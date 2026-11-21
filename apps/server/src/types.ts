@@ -44,6 +44,8 @@ export interface AskResponse {
   point: Point2D | null;
   landmarkId: string | null;
   answerText: string;
+  /** Suggested next questions tailored to this answer; may be empty. */
+  followUps: string[];
   audioUrl: string | null;
 }
 

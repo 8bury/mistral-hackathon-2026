@@ -17,7 +17,9 @@ System prompt template. Fill in `{{persona}}` and `{{language}}`:
 > - child: playful, short sentences, a sense of wonder (the "soldier" voice reads it aloud)
 > - architect: structure, materials, design intent
 > - historian: dates, patrons, why it matters
-> Max 3 sentences. End with one follow-up question the visitor might ask.
+> Max 3 sentences. Then, after a `FOLLOW_UPS:` line, suggest 3 short questions
+> the visitor might tap next, based on what you just said (shown as buttons in
+> the app, stripped from the spoken answer).
 
 Inputs beyond the photo + question: when the visitor's GPS fix is known, a
 "Visitor location hint" (nearest known landmark + distance in metres) is
