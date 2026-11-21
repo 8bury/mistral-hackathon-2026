@@ -28,8 +28,11 @@ function parseLocation(value: unknown): UserLocation | null {
   return { lat, lng, accuracy };
 }
 
+/** Cap on the visitor-written style instructions for the 'you' persona. */
+const MAX_CUSTOM_STYLE = 600;
+
 function parsePersona(value: unknown): Persona | null {
-  return value === 'child' || value === 'architect' || value === 'historian' ? value : null;
+  return value === 'child' || value === 'architect' || value === 'historian' || value === 'you' ? value : null;
 }
 
 function parseLanguage(value: unknown): string {
@@ -62,9 +65,11 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
     const language = parseLanguage(body.language);
     const tourId = typeof body.tourId === 'string' && body.tourId.trim() ? body.tourId.trim().slice(0, 100) : 'anonymous';
     const location = parseLocation(body.location);
+    const customStyle =
+      persona === 'you' && typeof body.customStyle === 'string' ? body.customStyle.trim().slice(0, MAX_CUSTOM_STYLE) : '';
 
     if (!persona) {
-      res.status(400).json({ error: 'invalid_persona', message: 'persona must be child, architect, or historian' });
+      res.status(400).json({ error: 'invalid_persona', message: 'persona must be child, architect, historian, or you' });
       return;
     }
     if (!question || question.length > 2000) {
@@ -119,6 +124,7 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
       images: recentFrames(tour),
       question,
       persona,
+      customStyle,
       language,
       landmark,
       history: tour.history,

@@ -51,6 +51,22 @@ export function groundingSystemPrompt(location?: UserLocation | null): string {
   return parts.join('\n');
 }
 
+/**
+ * The 'you' persona: the visitor describes how they want answers. Their text
+ * shapes tone and focus only — it is quoted as data so it cannot override the
+ * grounding, length or follow-up rules above.
+ */
+function customStyleBlock(customStyle?: string): string {
+  const style = customStyle?.trim();
+  if (!style) return 'Persona "you": the visitor has not described a style yet — answer as a friendly, clear, well-informed guide.';
+  return [
+    'Persona "you": the visitor wrote how they want you to answer. Adopt this voice, tone and focus as closely as you can, within the operational rules above (they still win on length, facts and the follow-up format):',
+    '<visitor_style>',
+    style.replaceAll('</visitor_style>', ''),
+    '</visitor_style>',
+  ].join('\n');
+}
+
 /** Line that separates the spoken answer from the suggested follow-up questions. */
 export const FOLLOW_UPS_MARKER = 'FOLLOW_UPS:';
 
@@ -61,11 +77,13 @@ export const FOLLOW_UPS_MARKER = 'FOLLOW_UPS:';
  */
 export function guideSystemPrompt(opts: {
   persona: Persona;
+  /** Visitor-written style instructions; only honoured for the 'you' persona. */
+  customStyle?: string;
   language: Language;
   landmark: Landmark | null;
   location?: UserLocation | null;
 }): string {
-  const { persona, language, landmark, location } = opts;
+  const { persona, customStyle, language, landmark, location } = opts;
   const base = readPrompt('guide.md')
     .replaceAll('{{persona}}', persona)
     .replaceAll('{{language}}', language)
@@ -109,6 +127,7 @@ export function guideSystemPrompt(opts: {
     `- Use the curated fact below when it covers the question. For time-sensitive details such as today's opening hours, say that the visitor should verify with the venue's official site.`,
     `- Keep the answer to at most 3 sentences. Do not end the answer with a question to the visitor.`,
     `- After the answer, write a line containing only "${FOLLOW_UPS_MARKER}" and then exactly 3 short questions the visitor might tap to ask you next, one per line, each starting with "- ". Write them in the answer's language, in the visitor's voice (e.g. "Who designed it?"), at most 8 words each, matching your persona's interests. Base them on what you just said or on what the photo shows that you have not covered yet; never repeat a question already asked. They are shown as buttons, not read aloud.`,
+    ...(persona === 'you' ? ['', customStyleBlock(customStyle)] : []),
     '',
     factBlock,
     ...(locationBlock ? ['', locationBlock] : []),
