@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { Language } from '../api';
 import type { PersonaTheme } from '../personas';
+import Figurine from './Figurines';
 import Icon from './Icon';
 
 interface Props {
@@ -40,7 +41,7 @@ export default function AnswerCard(props: Props) {
   return (
     <section className="answer" aria-live="polite">
       <header className="answer__head">
-        <span className={`avatar ${speaking ? 'is-speaking' : ''}`}>{theme.avatar}</span>
+        <span className={`avatar ${speaking ? 'is-speaking' : ''}`}><Figurine id={theme.id} size={34} /></span>
         <div className="answer__meta">
           <span className="answer__who">{theme.name[language]}</span>
           {question && <span className="answer__q">{question}</span>}

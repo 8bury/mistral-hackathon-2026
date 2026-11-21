@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { Stop } from '../walk';
 
 import type { Language } from '../api';
+import Figurine from './Figurines';
 import Icon from './Icon';
 
 /**
@@ -64,7 +65,7 @@ const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }
 };
 const fmt = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
 
-function MapArt({ focusId, span, labels, me, route }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[] }) {
+function MapArt({ focusId, span, labels, me, route, heading, face }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[]; heading: number; face: string | null }) {
   const ME = me;
   const focus = PLACES.find((p) => p.id === focusId) ?? ME;
   const order = (id: string) => route.findIndex((p) => p.id === id) + 1;
@@ -91,15 +92,29 @@ function MapArt({ focusId, span, labels, me, route }: { focusId: string | null; 
           const n = order(p.id);
           return (
             <g key={p.id} className={`m-pin ${p.id === focusId ? 'is-focus' : ''} ${n ? 'is-visited' : ''}`} transform={`translate(${p.x} ${p.y})`}>
-              <circle r={labels ? (n ? 14 : 11) : 16} />
-              {labels && n > 0 && <text className="m-pin__n" dy="0.35em">{n}</text>}
-              {labels && <text y={-22} className="m-label m-label--pin">{p.name}</text>}
+              <g transform={`scale(${labels ? 2.6 : 3.8}) translate(0 -8)`}>
+                <path d="M0 8 L-3.4 1.5 A 4.4 4.4 0 1 1 3.4 1.5 Z" className="m-pin__drop" />
+                {labels && n > 0 ? (
+                  <text y="1.6" dy="0.35em" className="m-pin__n">{n}</text>
+                ) : (
+                  <circle cy="1.6" r="1.5" className="m-pin__hole" />
+                )}
+              </g>
+              {labels && <text y={-34} className="m-label m-label--pin">{p.name}</text>}
             </g>
           );
         })}
         <g className="m-me" transform={`translate(${ME.x} ${ME.y})`}>
-          <circle r={labels ? 22 : 30} className="m-me__halo" />
-          <circle r={labels ? 9 : 13} className="m-me__dot" />
+          <g transform={`rotate(${heading})`}>
+            <polygon points={labels ? '0,-62 16,-6 0,-16 -16,-6' : '0,-80 20,-6 0,-18 -20,-6'} className="m-me__wedge" />
+          </g>
+          <circle r={labels ? 14 : 18} className="m-me__halo" />
+          <circle r={labels ? 11 : 15} className="m-me__dot" />
+          {labels && (
+            <g transform="translate(-26 -66)">
+              <Figurine id="generic" faceImage={face} size={52} />
+            </g>
+          )}
         </g>
       </g>
     </svg>
@@ -112,11 +127,13 @@ interface Props {
   focusId: string | null;
   stops: Stop[];
   onRecap: () => Promise<string>;
+  heading: number;
+  face: string | null;
 }
 
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-export default function MiniMap({ language, focusId, stops, onRecap }: Props) {
+export default function MiniMap({ language, focusId, stops, onRecap, heading, face }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'nearby' | 'walk'>('nearby');
   const [picked, setPicked] = useState<string | null>(null);
@@ -145,13 +162,13 @@ export default function MiniMap({ language, focusId, stops, onRecap }: Props) {
   return (
     <>
       <button className="minimap" onClick={() => setOpen(true)} aria-label={es ? 'Abrir mapa' : 'Open map'}>
-        <MapArt focusId={focusId} span={320} labels={false} me={me} route={route} />
+        <MapArt focusId={focusId} span={320} labels={false} me={me} route={route} heading={heading} face={face} />
         {stops.length > 0 && <span className="minimap__count">{stops.length}</span>}
       </button>
 
       {open && (
         <div className="map-sheet">
-          <MapArt focusId={selected} span={560} labels me={me} route={route} />
+          <MapArt focusId={selected} span={560} labels me={me} route={route} heading={heading} face={face} />
           <div className="map-top">
             <div className="seg" role="tablist">
               <button role="tab" aria-selected={tab === 'nearby'} className={tab === 'nearby' ? 'is-on' : ''} onClick={() => setTab('nearby')}>

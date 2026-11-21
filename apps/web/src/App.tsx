@@ -6,7 +6,11 @@ import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
 import GuideSheet from './components/GuideSheet';
+import Compass from './components/Compass';
+import FaceCapture from './components/FaceCapture';
+import Figurine from './components/Figurines';
 import Icon from './components/Icon';
+import { useHeading } from './hooks/useHeading';
 import MiniMap from './components/MiniMap';
 import Overlay from './components/Overlay';
 import { personaById } from './personas';
@@ -69,6 +73,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [playKey, setPlayKey] = useState(0);
   const [stops, setStops] = useState<Stop[]>([]);
+  const [face, setFace] = useState<string | null>(() => store.get('vysta.face'));
+  const [faceOpen, setFaceOpen] = useState(false);
+  const { heading, needsPermission, requestMotion } = useHeading();
 
   useEffect(() => store.set('vysta.persona', persona), [persona]);
   useEffect(() => store.set('vysta.lang', language), [language]);
@@ -281,7 +288,7 @@ export default function App() {
 
       <header className="topbar">
         <button className="guide-chip" onClick={() => setSheetOpen(true)}>
-          <span className="guide-chip__avatar">{theme.avatar}</span>
+          <span className="guide-chip__avatar"><Figurine id={theme.id} size={28} /></span>
           <span>{theme.name[language]}</span>
           <span className="guide-chip__lang">{language.toUpperCase()}</span>
           <Icon name="chevron" size={16} />
@@ -293,6 +300,8 @@ export default function App() {
           language={language}
           focusId={result?.landmarkId ?? null}
           stops={stops}
+          heading={heading}
+          face={face}
           onRecap={() =>
             recap(
               tourId,
@@ -300,6 +309,26 @@ export default function App() {
               language,
             )
           }
+        />
+      )}
+
+      {phase !== 'listening' && phase !== 'thinking' && (
+        <Compass heading={heading} needsPermission={needsPermission} onEnable={requestMotion} />
+      )}
+
+      {faceOpen && (
+        <FaceCapture
+          mode={face ? 'change' : 'create'}
+          onCapture={(img) => {
+            setFace(img);
+            store.set('vysta.face', img);
+            setFaceOpen(false);
+          }}
+          onClose={() => setFaceOpen(false)}
+          onError={(m) => {
+            setError(m);
+            setFaceOpen(false);
+          }}
         />
       )}
 
@@ -344,6 +373,8 @@ export default function App() {
           language={language}
           onPick={setPersona}
           onLanguage={setLanguage}
+          face={face}
+          onFace={() => setFaceOpen(true)}
           onClose={() => {
             if (welcome) store.set('vysta.onboarded', '1');
             setWelcome(false);
