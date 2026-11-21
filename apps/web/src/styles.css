@@ -212,6 +212,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .map-row__dot { width: 10px; height: 10px; border-radius: 50%; background: #8a8f99; }
 .map-row.is-on .map-row__dot { background: var(--accent); }
 .map-row__name { flex: 1; font-size: 15px; font-weight: 500; }
+.map-note { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: var(--text-2); background: rgba(127, 127, 127, 0.12); }
 .map-row__dist { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
 /* walk route */
