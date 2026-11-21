@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import type { Stop } from '../walk';
+
 import type { Language } from '../api';
 import Icon from './Icon';
 
@@ -22,8 +24,21 @@ const PLACES = [
   { id: 'dragon-boundary', name: 'Dragon boundary marker', lat: 51.5113, lng: -0.1112 },
 ].map((p) => ({ ...p, ...project(p.lat, p.lng) }));
 
-/** Mock "you are here": outside Bank station. */
-const ME = { lat: 51.5133, lng: -0.089, ...project(51.5133, -0.089) };
+type Place = (typeof PLACES)[number];
+type Me = { lat: number; lng: number; x: number; y: number };
+
+/** Mock "you are here": outside Bank station, then beside your latest stop. */
+const BANK: Me = { lat: 51.5133, lng: -0.089, ...project(51.5133, -0.089) };
+
+/** Visited places in walk order, without consecutive repeats. */
+function routeOf(stops: Stop[]): Place[] {
+  const out: Place[] = [];
+  for (const s of stops) {
+    const p = PLACES.find((pl) => pl.id === s.landmarkId);
+    if (p && out.at(-1)?.id !== p.id) out.push(p);
+  }
+  return out;
+}
 
 const ROADS_MAJOR = [
   'M0,240 L300,215 L420,182 L560,232 L760,262 L1000,300', // Fleet St, Ludgate Hill, Cannon St
@@ -49,8 +64,10 @@ const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }
 };
 const fmt = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
 
-function MapArt({ focusId, span, labels }: { focusId: string | null; span: number; labels: boolean }) {
+function MapArt({ focusId, span, labels, me, route }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[] }) {
+  const ME = me;
   const focus = PLACES.find((p) => p.id === focusId) ?? ME;
+  const order = (id: string) => route.findIndex((p) => p.id === id) + 1;
   return (
     <svg className="map-art" viewBox={`0 0 ${span} ${span}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <g className="map-art__pan" style={{ transform: `translate(${span / 2 - focus.x}px, ${span / 2 - focus.y}px)` }}>
@@ -67,12 +84,19 @@ function MapArt({ focusId, span, labels }: { focusId: string | null; span: numbe
             <text x={560} y={166} className="m-label">Cheapside</text>
           </>
         )}
-        {PLACES.map((p) => (
-          <g key={p.id} className={`m-pin ${p.id === focusId ? 'is-focus' : ''}`} transform={`translate(${p.x} ${p.y})`}>
-            <circle r={labels ? 11 : 16} />
-            {labels && <text y={-20} className="m-label m-label--pin">{p.name}</text>}
-          </g>
-        ))}
+        {route.length > 1 && (
+          <polyline className="m-route" points={route.map((p) => `${p.x},${p.y}`).join(' ')} style={{ strokeWidth: labels ? 6 : 9 }} />
+        )}
+        {PLACES.map((p) => {
+          const n = order(p.id);
+          return (
+            <g key={p.id} className={`m-pin ${p.id === focusId ? 'is-focus' : ''} ${n ? 'is-visited' : ''}`} transform={`translate(${p.x} ${p.y})`}>
+              <circle r={labels ? (n ? 14 : 11) : 16} />
+              {labels && n > 0 && <text className="m-pin__n" dy="0.35em">{n}</text>}
+              {labels && <text y={-22} className="m-label m-label--pin">{p.name}</text>}
+            </g>
+          );
+        })}
         <g className="m-me" transform={`translate(${ME.x} ${ME.y})`}>
           <circle r={labels ? 22 : 30} className="m-me__halo" />
           <circle r={labels ? 9 : 13} className="m-me__dot" />
@@ -86,36 +110,104 @@ interface Props {
   language: Language;
   /** Landmark the current answer is about; its pin is highlighted. */
   focusId: string | null;
+  stops: Stop[];
+  onRecap: () => Promise<string>;
 }
 
-export default function MiniMap({ language, focusId }: Props) {
+const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+export default function MiniMap({ language, focusId, stops, onRecap }: Props) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'nearby' | 'walk'>('nearby');
   const [picked, setPicked] = useState<string | null>(null);
+  const [recapText, setRecapText] = useState<string | null>(null);
+  const [recapBusy, setRecapBusy] = useState(false);
   const es = language === 'es';
-  const sorted = [...PLACES].sort((a, b) => metres(ME, a) - metres(ME, b));
+
+  const route = routeOf(stops);
+  const last = route.at(-1);
+  const me: Me = last ? { lat: last.lat, lng: last.lng, x: last.x + 18, y: last.y + 22 } : BANK;
+  const sorted = [...PLACES].sort((a, b) => metres(me, a) - metres(me, b));
   const selected = picked ?? focusId;
+  const nameOf = (id: string | null) => PLACES.find((p) => p.id === id)?.name ?? (es ? 'Sin lugar' : 'Unplaced');
+
+  const doRecap = async () => {
+    setRecapBusy(true);
+    try {
+      setRecapText(await onRecap());
+    } catch (e) {
+      setRecapText(e instanceof Error ? e.message : 'Recap failed');
+    } finally {
+      setRecapBusy(false);
+    }
+  };
 
   return (
     <>
       <button className="minimap" onClick={() => setOpen(true)} aria-label={es ? 'Abrir mapa' : 'Open map'}>
-        <MapArt focusId={focusId} span={320} labels={false} />
+        <MapArt focusId={focusId} span={320} labels={false} me={me} route={route} />
+        {stops.length > 0 && <span className="minimap__count">{stops.length}</span>}
       </button>
 
       {open && (
         <div className="map-sheet">
-          <MapArt focusId={selected} span={560} labels />
-          <button className="map-close icon-btn" onClick={() => setOpen(false)} aria-label={es ? 'Cerrar' : 'Close'}>
-            <Icon name="close" />
-          </button>
-          <div className="map-list">
-            <h2>{es ? 'Cerca' : 'Nearby'}</h2>
-            {sorted.map((p) => (
-              <button key={p.id} className={`map-row ${p.id === selected ? 'is-on' : ''}`} onClick={() => setPicked(p.id)}>
-                <span className="map-row__dot" />
-                <span className="map-row__name">{p.name}</span>
-                <span className="map-row__dist">{fmt(metres(ME, p))}</span>
+          <MapArt focusId={selected} span={560} labels me={me} route={route} />
+          <div className="map-top">
+            <div className="seg" role="tablist">
+              <button role="tab" aria-selected={tab === 'nearby'} className={tab === 'nearby' ? 'is-on' : ''} onClick={() => setTab('nearby')}>
+                {es ? 'Cerca' : 'Nearby'}
               </button>
-            ))}
+              <button role="tab" aria-selected={tab === 'walk'} className={tab === 'walk' ? 'is-on' : ''} onClick={() => setTab('walk')}>
+                {es ? 'Tu paseo' : 'Your walk'}
+                {stops.length > 0 && <span className="seg__n">{stops.length}</span>}
+              </button>
+            </div>
+            <button className="icon-btn map-close" onClick={() => setOpen(false)} aria-label={es ? 'Cerrar' : 'Close'}>
+              <Icon name="close" />
+            </button>
+          </div>
+
+          <div className="map-list">
+            {tab === 'nearby' &&
+              sorted.map((p) => (
+                <button key={p.id} className={`map-row ${p.id === selected ? 'is-on' : ''}`} onClick={() => setPicked(p.id)}>
+                  <span className="map-row__dot" />
+                  <span className="map-row__name">{p.name}</span>
+                  <span className="map-row__dist">{fmt(metres(me, p))}</span>
+                </button>
+              ))}
+
+            {tab === 'walk' && stops.length === 0 && (
+              <p className="walk-empty">
+                {es ? 'Aún no hay paradas. Pregunta por algo para empezar tu paseo.' : 'No stops yet. Ask about something to start your walk.'}
+              </p>
+            )}
+
+            {tab === 'walk' && stops.length > 0 && (
+              <>
+                <ol className="walk">
+                  {stops.map((s) => (
+                    <li key={s.id}>
+                      <button className={`walk-row ${s.landmarkId === selected ? 'is-on' : ''}`} onClick={() => setPicked(s.landmarkId)}>
+                        <img src={s.thumb} alt="" />
+                        <span className="walk-row__body">
+                          <span className="walk-row__name">{nameOf(s.landmarkId)}</span>
+                          <span className="walk-row__q">{s.question}</span>
+                        </span>
+                        <span className="walk-row__time">{clock(s.time)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+                {recapText ? (
+                  <p className="recap">{recapText}</p>
+                ) : (
+                  <button className="primary" onClick={() => void doRecap()} disabled={recapBusy}>
+                    {recapBusy ? (es ? 'Preparando…' : 'Writing recap…') : es ? 'Resumen del paseo' : 'Recap my walk'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

@@ -81,14 +81,25 @@ export async function textToSpeech(
 }
 
 /** Frame + question -> grounded answer. */
+// Mock: each new camera frame is "the next landmark on the walk", so the
+// route on the map has more than one stop. Follow-ups on the same frame stay put.
+const MOCK_WALK = ['dragon-boundary', 'st-pauls', 'leadenhall-market'] as const;
+let mockFrame = '';
+let mockStep = -1;
+
 export async function ask(req: AskRequest): Promise<AskResponse> {
   if (MOCK_ASK) {
     await delay(900);
+    if (req.frame !== mockFrame) {
+      mockFrame = req.frame;
+      mockStep = (mockStep + 1) % MOCK_WALK.length;
+    }
+    const landmarkId = MOCK_WALK[mockStep];
     return {
       box: { x: 380, y: 300, width: 260, height: 320 },
       point: null,
-      landmarkId: 'dragon-boundary',
-      answerText: mockAnswer(req.persona, req.language),
+      landmarkId,
+      answerText: landmarkId === 'dragon-boundary' ? mockAnswer(req.persona, req.language) : MOCK_FACTS[landmarkId][req.language],
       audioUrl: null,
     };
   }
@@ -99,6 +110,38 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
   });
   if (!res.ok) throw new Error(`Ask failed: ${res.status}`);
   return res.json();
+}
+
+const MOCK_FACTS: Record<string, Record<Language, string>> = {
+  'st-pauls': {
+    en: "Sir Christopher Wren designed St Paul's after the Great Fire of 1666. Its dome was the tallest in London for 300 years.",
+    es: 'Sir Christopher Wren diseñó San Pablo tras el Gran Incendio de 1666. Su cúpula fue la más alta de Londres durante 300 años.',
+  },
+  'leadenhall-market': {
+    en: 'Leadenhall Market opened in 1881. Sir Horace Jones designed its iron and glass roof.',
+    es: 'El mercado de Leadenhall abrió en 1881. Sir Horace Jones diseñó su cubierta de hierro y vidrio.',
+  },
+};
+
+export interface RecapStop {
+  landmarkId: string | null;
+  question: string;
+  answerText: string;
+}
+
+/** Walk recap. The server route is still a 501 stub, so mock mode builds one locally. */
+export async function recap(tourId: string, stops: RecapStop[], language: Language): Promise<string> {
+  if (MOCK_ASK) {
+    await delay(700);
+    const places = [...new Set(stops.map((s) => s.landmarkId).filter(Boolean))].length;
+    return language === 'es'
+      ? `Has visitado ${places} lugar(es) e hiciste ${stops.length} pregunta(s). Tu última parada respondió: «${stops.at(-1)?.answerText ?? ''}»`
+      : `You visited ${places} place(s) and asked ${stops.length} question(s). Your last stop answered: "${stops.at(-1)?.answerText ?? ''}"`;
+  }
+  const res = await fetch(`${API_URL}/api/recap/${encodeURIComponent(tourId)}`);
+  if (!res.ok) throw new Error(`Recap failed: ${res.status}`);
+  const data = await res.json();
+  return typeof data === 'string' ? data : (data.recap ?? JSON.stringify(data));
 }
 
 function mockAnswer(persona: Persona, language: Language): string {
