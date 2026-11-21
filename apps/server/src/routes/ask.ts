@@ -28,8 +28,8 @@ function parseLocation(value: unknown): UserLocation | null {
   return { lat, lng, accuracy };
 }
 
-function parsePersona(value: unknown): Persona {
-  return value === 'child' || value === 'architect' || value === 'historian' ? value : 'historian';
+function parsePersona(value: unknown): Persona | null {
+  return value === 'child' || value === 'architect' || value === 'historian' ? value : null;
 }
 
 function parseLanguage(value: unknown): string {
@@ -63,6 +63,10 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
     const tourId = typeof body.tourId === 'string' && body.tourId.trim() ? body.tourId.trim().slice(0, 100) : 'anonymous';
     const location = parseLocation(body.location);
 
+    if (!persona) {
+      res.status(400).json({ error: 'invalid_persona', message: 'persona must be child, architect, or historian' });
+      return;
+    }
     if (!question || question.length > 2000) {
       res.status(400).json({ error: 'missing_question' });
       return;

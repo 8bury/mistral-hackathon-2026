@@ -32,6 +32,15 @@ function contentToText(content: unknown): string {
   return '';
 }
 
+/** Mistral may expose a single `message` or a sequence in `messages`. */
+function choiceToText(choice: { message?: { content?: unknown }; messages?: Array<{ content?: unknown }> }): string {
+  const contents = [choice.message, ...(choice.messages ?? [])]
+    .filter((message): message is { content?: unknown } => !!message)
+    .map((message) => contentToText(message.content))
+    .filter(Boolean);
+  return contents.join('\n').trim();
+}
+
 /**
  * Guide agent (prototype): tour-guide system prompt (persona + language) +
  * the visitor's photos + short history + the question, in ONE model call.
@@ -68,8 +77,8 @@ export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
     const choice = res.choices[0] as unknown as {
       message?: { content?: unknown };
       messages?: Array<{ content?: unknown }>;
-  };
-  return contentToText(choice?.message?.content ?? choice?.messages?.[0]?.content).trim();
+    };
+    return choiceToText(choice ?? {});
   };
 
   let answerText = await attempt(false);
