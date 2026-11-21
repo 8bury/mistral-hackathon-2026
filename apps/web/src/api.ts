@@ -5,8 +5,8 @@
 // when the team agrees the contract, move them to packages/shared and import
 // from there in both web and server.
 
-export type Persona = 'child' | 'architect' | 'historian';
-export type Language = 'en' | 'es';
+export type Persona = 'child' | 'architect' | 'historian' | 'generic';
+export type Language = 'en' | 'es' | 'fr' | 'de';
 
 /** Normalized 0..1000, Le Chonk convention. */
 export interface Box2D {
@@ -78,17 +78,33 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
   return res.json();
 }
 
-function mockAnswer(persona: Persona, language: Language): string {
-  if (language === 'es') {
-    return {
-      child: '¡Mira! El dragón sostiene un escudo porque protege la City de Londres.',
-      architect: 'El dragón sostiene un escudo: es el emblema heráldico de la City of London.',
-      historian: 'Este dragón es el guardián de la City; el escudo recuerda su patronazgo histórico.',
-    }[persona];
-  }
-  return {
+const MOCK_LINES: Record<Language, Record<Persona, string>> = {
+  en: {
     child: 'Look! The dragon is holding a shield because it guards the City of London!',
     architect: 'The dragon holds a shield — it is the heraldic emblem of the City of London.',
     historian: 'This dragon is the guardian of the City; the shield recalls its historic patronage.',
-  }[persona];
+    generic: 'Noted. The dragon boundary marker marks where the historic City begins.',
+  },
+  es: {
+    child: '¡Mira! El dragón sostiene un escudo porque protege la City de Londres.',
+    architect: 'El dragón sostiene un escudo: es el emblema heráldico de la City of London.',
+    historian: 'Este dragón es el guardián de la City; el escudo recuerda su patronazgo histórico.',
+    generic: 'Entendido. El mojón del dragón marca dónde comienza la City histórica.',
+  },
+  fr: {
+    child: 'Regarde ! Le dragon tient un bouclier parce qu’il garde la City de Londres !',
+    architect: 'Le dragon porte un bouclier — c’est l’emblème héraldique de la City de Londres.',
+    historian: 'Ce dragon est le gardien de la City ; le bouclier rappelle son patronage historique.',
+    generic: 'Noté. Le marqueur au dragon indique où commence la City historique.',
+  },
+  de: {
+    child: 'Schau! Der Drache hält ein Schild, weil er die City of London beschützt!',
+    architect: 'Der Drache trägt ein Schild — das Wappen der City of London.',
+    historian: 'Dieser Drache ist der Wächter der City; das Schild erinnert an ihren historischen Schutz.',
+    generic: 'Verstanden. Der Drachen-Grenzstein markiert den Beginn der historischen City.',
+  },
+};
+
+function mockAnswer(persona: Persona, language: Language): string {
+  return MOCK_LINES[language][persona];
 }
