@@ -95,6 +95,11 @@ export default function App() {
   const pressedRef = useRef(false);
   const playerRef = useRef<HTMLAudioElement | null>(null);
   const ownedUrlRef = useRef<string | null>(null);
+  // Which persona the current audio was voiced with — if the user switches
+  // character, the answer is re-voiced so the voice always matches.
+  const audioPersonaRef = useRef<Persona | null>(null);
+  // Refs mirror the latest values so stable callbacks never go stale.
+  const resultRef = useRef<AskResponse | null>(null);
   const speakTimer = useRef<number>();
   // Latest GPS fix (accuracy in metres). Stays null until a fix arrives or when
   // permission is denied; the app keeps working and simply sends no location.
@@ -122,6 +127,7 @@ export default function App() {
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [result, setResult] = useState<AskResponse | null>(null);
+  resultRef.current = result;
   const [frozenFrame, setFrozenFrame] = useState<Frame | null>(null);
   const [flash, setFlash] = useState(0);
   const [speechMs, setSpeechMs] = useState(3000);
@@ -207,6 +213,7 @@ export default function App() {
   const discardAudio = () => {
     stopAudio();
     playerRef.current = null;
+    audioPersonaRef.current = null;
     if (ownedUrlRef.current) URL.revokeObjectURL(ownedUrlRef.current);
     ownedUrlRef.current = null;
   };
@@ -216,8 +223,40 @@ export default function App() {
     clearTimeout(speakTimer.current);
     speakTimer.current = window.setTimeout(() => setSpeaking(false), ms);
   };
+  /** (Re)generate the spoken answer with the given persona's voice and play it. */
+  const voiceWith = useCallback(async (text: string, voicePersona: Persona) => {
+    if (MOCK) return; // mock mode has no TTS; fakeSpeak covers the read-along UI
+    try {
+      const url = await textToSpeech(text, voicePersona, answerLanguageRef.current);
+      if (!url) return;
+      stopAudio();
+      const player = new Audio(url);
+      playerRef.current = player;
+      audioPersonaRef.current = voicePersona;
+      if (ownedUrlRef.current) URL.revokeObjectURL(ownedUrlRef.current);
+      ownedUrlRef.current = url;
+      player.addEventListener('play', () => setSpeaking(true));
+      player.addEventListener('pause', () => setSpeaking(false));
+      player.addEventListener('ended', () => setSpeaking(false));
+      await player.play().catch(() => setError('Tap anywhere to enable sound.'));
+    } catch (e) {
+      console.warn('[tts]', e);
+    }
+  }, []);
+  // Switching the guide character re-voices the current answer, so the voice
+  // always matches the selected persona (not just on the next question).
+  useEffect(() => {
+    const res = resultRef.current;
+    if (!res || audioPersonaRef.current === persona) return;
+    void voiceWith(res.answerText, persona);
+  }, [persona, voiceWith]);
   const replay = () => {
     setPlayKey((k) => k + 1);
+    // The stored audio may be in the previous character's voice — re-voice it.
+    if (resultRef.current && audioPersonaRef.current !== personaRef.current) {
+      void voiceWith(resultRef.current.answerText, personaRef.current);
+      return;
+    }
     const player = playerRef.current;
     if (player) {
       player.currentTime = 0;
@@ -276,10 +315,15 @@ export default function App() {
       setPhase('answer');
       navigator.vibrate?.([10, 40, 10]);
 
+      // The current answer is now voiced for this persona (or has no audio).
+      audioPersonaRef.current = personaRef.current;
       if (audioUrl) {
         const player = new Audio(audioUrl);
         playerRef.current = player;
-        if (ownsUrl) ownedUrlRef.current = audioUrl;
+        if (ownsUrl) {
+          if (ownedUrlRef.current) URL.revokeObjectURL(ownedUrlRef.current);
+          ownedUrlRef.current = audioUrl;
+        }
         player.addEventListener('loadedmetadata', () => {
           if (Number.isFinite(player.duration)) setSpeechMs(player.duration * 1000);
         });
