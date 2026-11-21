@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-import { ask, speechToText } from './api';
+import { ask, speechToText, textToSpeech } from './api';
 import type { AskResponse, Language, Persona } from './api';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls from './components/Controls';
@@ -39,7 +39,7 @@ export default function App() {
     async (audio: Blob) => {
       setBusy(true);
       try {
-        const question = await speechToText(audio);
+        const question = await speechToText(audio, languageRef.current);
         setTranscript(question);
         const res = await ask({
           frame: frameRef.current?.dataUrl ?? '',
@@ -49,8 +49,28 @@ export default function App() {
           tourId,
         });
         setResult(res);
-        if (res.audioUrl) {
-          const player = new Audio(res.audioUrl);
+        // /api/ask returns audioUrl once wired; until then, speak the answer
+        // directly via Voxtral TTS so the voice loop works end-to-end.
+        // TTS failure is non-fatal: the text answer is already on screen.
+        let audioUrl = res.audioUrl ?? null;
+        let ownsUrl = false;
+        if (!audioUrl) {
+          try {
+            audioUrl = await textToSpeech(res.answerText, personaRef.current, languageRef.current);
+            ownsUrl = audioUrl !== null;
+          } catch (ttsErr) {
+            console.warn('[tts]', ttsErr);
+          }
+        }
+        if (audioUrl) {
+          const player = new Audio(audioUrl);
+          if (ownsUrl) {
+            // Object URLs pin the blob in memory until revoked.
+            const url = audioUrl;
+            const revoke = () => URL.revokeObjectURL(url);
+            player.addEventListener('ended', revoke, { once: true });
+            player.addEventListener('error', revoke, { once: true });
+          }
           player.play().catch(() => setError('Audio playback was blocked — interact with the page to enable sound.'));
         }
       } catch (e) {
