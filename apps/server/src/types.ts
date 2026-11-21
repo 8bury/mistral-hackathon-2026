@@ -18,6 +18,13 @@ export interface Point2D {
   y: number;
 }
 
+/** GPS fix from the visitor's device; accuracy is the estimated radius in metres. */
+export interface UserLocation {
+  lat: number;
+  lng: number;
+  accuracy: number;
+}
+
 export interface AskRequest {
   frame: string; // base64 JPEG snapshot captured at push-to-talk (data URL or raw base64)
   question: string;
@@ -26,6 +33,8 @@ export interface AskRequest {
   tourId: string;
   /** Optional extra photos the user attached this turn. */
   frames?: string[];
+  /** Latest GPS fix when the device granted location; absent/null otherwise. */
+  location?: UserLocation | null;
 }
 
 export interface AskResponse {

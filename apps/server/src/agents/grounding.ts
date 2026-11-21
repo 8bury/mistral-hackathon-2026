@@ -1,7 +1,7 @@
 import { MODELS, mistral } from '../lib/mistral';
 import { matchLandmark } from '../lib/landmarks';
 import { groundingSystemPrompt } from '../lib/prompts';
-import type { Box2D, Point2D } from '../types';
+import type { Box2D, Point2D, UserLocation } from '../types';
 
 export interface GroundingResult {
   landmarkId: string | null;
@@ -45,15 +45,21 @@ function parsePoint(v: unknown): Point2D | null {
 /**
  * Le Chonk: send one photo + the user's question to the vision model and get
  * back a grounded landmark id + normalized box/point (0..1000).
+ * When `location` is known, the system prompt lists nearby landmarks with
+ * distances and asks the model to prefer them (all candidates stay valid).
  */
-export async function groundFrame(imageDataUrl: string, question: string): Promise<GroundingResult> {
+export async function groundFrame(
+  imageDataUrl: string,
+  question: string,
+  location?: UserLocation | null,
+): Promise<GroundingResult> {
   const res = await mistral().chat.complete({
     model: MODELS.grounding,
     temperature: 0,
     maxTokens: 300,
     responseFormat: { type: 'json_object' },
     messages: [
-      { role: 'system', content: groundingSystemPrompt() },
+      { role: 'system', content: groundingSystemPrompt(location) },
       {
         role: 'user',
         content: [

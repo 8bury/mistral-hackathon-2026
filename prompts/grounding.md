@@ -16,6 +16,10 @@ Rules:
 - Use `box_2d` for objects/surfaces, `point_2d` for small details; either may be null.
 - `landmarkId` must come from data/landmarks.json when the object matches.
 - If nothing in the frame matches, return all nulls and let the guide agent say so.
+- When the visitor's GPS fix is known, a "nearby landmarks" list (with distances)
+  is appended after the candidate catalog. Prefer a nearby landmark when the photo
+  plausibly matches it — but every candidate id above stays valid, because a bad
+  GPS fix must not make identification impossible.
 
 Reliability of this prompt on 15–20 real photos (see test-grounding/) decides
 demo ambition — test it first.

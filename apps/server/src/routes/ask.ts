@@ -4,15 +4,37 @@ import { answerQuestion } from '../agents/guide';
 import { groundFrame } from '../agents/grounding';
 import { findLandmarkById } from '../lib/landmarks';
 import { addFrames, addHistory, getTour, recentFrames } from '../lib/store';
-import { normalizeDataUrl, type AskRequest, type AskResponse } from '../types';
+import { normalizeDataUrl, type AskRequest, type AskResponse, type UserLocation } from '../types';
+
+/**
+ * Accept only a well-formed GPS fix; anything else (missing, non-finite,
+ * out-of-range) is treated as absent. Location must never cause a 400.
+ */
+function parseLocation(value: unknown): UserLocation | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const { lat, lng, accuracy } = value as Record<string, unknown>;
+  if (
+    typeof lat !== 'number' ||
+    typeof lng !== 'number' ||
+    typeof accuracy !== 'number' ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    !Number.isFinite(accuracy)
+  ) {
+    return null;
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || accuracy < 0) return null;
+  return { lat, lng, accuracy };
+}
 
 /**
  * POST /api/ask
- * Body: { frame: base64Jpeg (data URL or raw base64), question, persona, language, tourId, frames?: string[] }
+ * Body: { frame: base64Jpeg (data URL or raw base64), question, persona, language, tourId, frames?: string[], location?: { lat, lng, accuracy } | null }
  * Response: { box, point, landmarkId, answerText, audioUrl }
  *
- * Pipeline: accumulate the tour's photos -> grounding agent (Le Chonk, vision)
- * -> guide agent (persona + language, photos + history).
+ * Pipeline: accumulate the tour's photos -> grounding agent (Le Chonk, vision,
+ * optionally biased by the visitor's GPS location) -> guide agent (persona +
+ * language, photos + history).
  * audioUrl stays null until the TTS route is wired.
  */
 export async function askRouter(req: Request, res: Response): Promise<void> {
@@ -23,6 +45,7 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
     const persona = body.persona ?? 'child';
     const language = body.language ?? 'en';
     const tourId = body.tourId ?? 'anonymous';
+    const location = parseLocation(body.location);
 
     if (!frame) {
       res.status(400).json({ error: 'missing_frame', message: 'frame must be a base64 JPEG (data URL or raw base64)' });
@@ -38,7 +61,7 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
     addFrames(tour, [frame, ...extra]);
 
     // 1. Ground the latest frame against the curated landmark set.
-    const grounding = await groundFrame(frame, question);
+    const grounding = await groundFrame(frame, question, location);
     const landmark = findLandmarkById(grounding.landmarkId);
 
     // 2. Guide answers with all recent photos + history.
@@ -49,6 +72,7 @@ export async function askRouter(req: Request, res: Response): Promise<void> {
       language,
       landmark,
       history: tour.history,
+      location,
     });
 
     addHistory(tour, [
