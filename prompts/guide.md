@@ -10,5 +10,10 @@ System prompt template. Fill in `{{persona}}` and `{{language}}`:
 > - historian: dates, patrons, why it matters
 > Max 3 sentences. End with one follow-up question the visitor might ask.
 
+Inputs beyond the photo + question: when the visitor's GPS fix is known, a
+"Visitor location hint" (nearest known landmark + distance in metres) is
+appended to the operational rules — use it to orient the answer, but the photo
+remains the source of truth for what the visitor is looking at.
+
 One file per persona+language combination will live here
 (e.g. `guide-child-en.md`, `guide-child-es.md`, ...).
