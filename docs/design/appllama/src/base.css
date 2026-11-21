@@ -1,0 +1,55 @@
+/* Shared tokens for the Vysta inspiration mockups (not app code). */
+:root {
+  --base: #05070a;
+  --ink: #f5f6f8;
+  --ink-2: rgba(235, 238, 245, 0.62);
+  --ink-3: rgba(235, 238, 245, 0.38);
+  --hair: rgba(255, 255, 255, 0.10);
+  --hair-2: rgba(255, 255, 255, 0.14);
+  --gold: #ffd166;
+  --accent: #ff5a1f;
+  --accent-text: #ff7a45;
+  --glass: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
+  --glass-dark: linear-gradient(180deg, rgba(22,24,30,.78), rgba(10,12,16,.86));
+  --inner: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -1px 0 rgba(0,0,0,.25);
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.35), 0 24px 64px rgba(0,0,0,.45);
+  --font: "SF Pro Display", "SF Pro Text", -apple-system, "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif;
+}
+[data-persona="child"] { --accent: #d62828; --accent-text: #ff5a5a; }
+[data-persona="architect"] { --accent: #ff5a1f; --accent-text: #ff7a45; }
+[data-persona="historian"] { --accent: #8e1b1b; --accent-text: #e0806a; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 390px; height: 844px; background: var(--base); overflow: hidden; }
+body { font-family: var(--font); color: var(--ink); -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; }
+.phone { position: relative; width: 390px; height: 844px; overflow: hidden; background: var(--base); }
+.scene { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+svg { display: block; }
+i[data-i] { display: inline-grid; place-items: center; font-style: normal; }
+i[data-i] svg { width: 100%; height: 100%; }
+
+/* status bar */
+.status { position: absolute; top: 0; left: 0; right: 0; height: 54px; padding: 18px 32px 0 40px;
+  display: flex; justify-content: space-between; font: 600 16px/1 var(--font); z-index: 50; text-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.status .si { display: flex; gap: 6px; align-items: center; }
+.home { position: absolute; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: rgba(255,255,255,.85); z-index: 60; }
+
+.glass { background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--hair-2); box-shadow: var(--inner), var(--shadow); }
+.glass-dark { background: var(--glass-dark); backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid var(--hair); box-shadow: var(--inner), var(--shadow); }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 17px;
+  font: 500 14px/1 var(--font); color: var(--ink); white-space: nowrap; }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.28); margin: 8px auto 0; }
+.eyebrow { font: 600 11px/1 var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+
+/* gold pin */
+.pin { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--gold);
+  box-shadow: 0 0 0 3px rgba(5,7,10,.55), 0 0 18px 4px rgba(255,209,102,.7); z-index: 5; }
+.pin::before, .pin::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 1.5px solid rgba(255,209,102,.55); }
+.pin::after { inset: -28px; border-color: rgba(255,209,102,.22); }
+
+/* top-left label badge for comparisons */
+.vlabel { position: absolute; top: 60px; right: 14px; z-index: 70; font: 700 11px/1 ui-monospace, Consolas, monospace;
+  padding: 5px 8px; border-radius: 6px; background: rgba(255,255,255,.9); color: #05070a; letter-spacing: .04em; }
