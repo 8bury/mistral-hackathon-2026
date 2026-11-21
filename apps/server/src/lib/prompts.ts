@@ -74,7 +74,11 @@ export function guideSystemPrompt(opts: {
         `Identified landmark: ${landmark.name} (id: ${landmark.id}).`,
         fact ? `Curated fact (${language}): ${fact}` : 'No curated fact in this language — use the English fact if it helps.',
       ].join('\n')
-    : 'No landmark was identified in the photo. Describe what you actually see; do not invent a landmark.';
+    : [
+        'None of the curated landmarks was matched in the photo, so you have no curated fact.',
+        'Still identify what the visitor is looking at: make your best guess from the photo, your own knowledge and the location hint, and say how confident you are ("This looks like…", "It is most likely…").',
+        'Do not reply that you cannot identify it from the image alone. Only if the photo is genuinely unreadable, say what you can see and ask for a clearer or closer shot.',
+      ].join('\n');
 
   // Short orientation hint from the visitor's GPS fix; distances only, never raw coordinates.
   let locationBlock = '';
