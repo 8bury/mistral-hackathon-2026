@@ -26,7 +26,7 @@ export function docsRouter(_req: Request, res: Response): void {
       <label>Photos or a short video <input id="photo" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" multiple /></label>
       <label>Question <textarea id="question" required>What landmark is this? Tell me its history.</textarea></label>
       <div class="row">
-        <label>Persona <select id="persona"><option value="historian" selected>Historian</option><option value="child">Child</option><option value="architect">Architect</option></select></label>
+        <label>Persona <select id="persona"><option value="historian" selected>Historian</option><option value="child">Child</option><option value="architect">Architect</option><option value="you">You (custom)</option></select></label>
         <label>Language <select id="language"><option value="auto" selected>Match question language</option><option value="en">English</option><option value="es">Spanish</option><option value="zh">Chinese</option></select></label>
       </div>
       <label>Tour ID <input id="tour-id" value="browser-test" required /></label>
