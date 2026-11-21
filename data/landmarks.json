@@ -1,0 +1,40 @@
+{
+  "landmarks": [
+    {
+      "id": "dragon-boundary",
+      "name": "City of London dragon boundary marker",
+      "aliases": ["dragon", "boundary marker", "city dragon"],
+      "facts": {
+        "en": "The dragon is the heraldic guardian of the City of London. Boundary markers like this one show where the historic City begins; the shield on its chest is part of the City's coat of arms, alongside the red cross of St George.",
+        "es": "El dragón es el guardián heráldico de la City de Londres. Estos mojones marcan el límite histórico de la City; el escudo de su pecho forma parte del escudo de armas de la City, junto a la cruz roja de San Jorge."
+      }
+    },
+    {
+      "id": "leadenhall-market",
+      "name": "Leadenhall Market",
+      "aliases": ["leadenhall", "market"],
+      "facts": {
+        "en": "Victorian covered market opened in 1881, designed by Sir Horace Jones. Its ornate iron and glass roof spans Leadenhall Street.",
+        "es": "Mercado victoriano cubierto inaugurado en 1881, diseñado por Sir Horace Jones. Su ornamentada cubierta de hierro y vidrio cubre la calle Leadenhall."
+      }
+    },
+    {
+      "id": "st-pauls",
+      "name": "St Paul's Cathedral",
+      "aliases": ["st paul's", "cathedral", "wren"],
+      "facts": {
+        "en": "Designed by Sir Christopher Wren after the Great Fire of 1666; its dome was the tallest in London for 300 years. The Whispering Gallery works because of its curved geometry.",
+        "es": "Diseñada por Sir Christopher Wren tras el Gran Incendio de 1666; su cúpula fue la más alta de Londres durante 300 años. La Galería del Susurro funciona por su geometría curva."
+      }
+    },
+    {
+      "id": "gargoyle",
+      "name": "Gothic gargoyle / grotesque",
+      "aliases": ["gargoyle", "grotesque", "stone face"],
+      "facts": {
+        "en": "Gargoyles originally served as waterspouts; grotesques are purely decorative. They ward off evil and remind passers-by of the medieval church above.",
+        "es": "Las gárgolas servían originalmente como desagües; los grotescos son puramente decorativos. Ahuyentan el mal y recuerdan la iglesia medieval de arriba."
+      }
+    }
+  ]
+}

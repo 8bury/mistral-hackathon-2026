@@ -1,0 +1,19 @@
+{
+  "name": "ai-city-guide",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Hackathon demo: voice-asked, visually grounded AI city guide for the City of London",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:server": "npm run dev --workspace=apps/server",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.21.5": true
+  }
+}
