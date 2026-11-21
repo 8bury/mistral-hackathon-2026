@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ask, AskError, MOCK, recap, speechToText, textToSpeech } from './api';
 import type { AnswerLanguage, AskResponse, Language, Persona, UserLocation } from './api';
+import type { FaceFeatures } from './faceFeatures';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
@@ -129,6 +130,14 @@ export default function App() {
   const [playKey, setPlayKey] = useState(0);
   const [stops, setStops] = useState<Stop[]>([]);
   const [face, setFace] = useState<string | null>(() => store.get('vysta.face'));
+  // Facial features extracted from the face scan; drives the personalized "You" figurine.
+  const [faceFeatures, setFaceFeatures] = useState<FaceFeatures | null>(() => {
+    try {
+      return JSON.parse(store.get('vysta.faceFeatures') ?? 'null') as FaceFeatures | null;
+    } catch {
+      return null;
+    }
+  });
   const [faceOpen, setFaceOpen] = useState(false);
   const { heading, needsPermission, requestMotion } = useHeading();
 
@@ -484,6 +493,7 @@ export default function App() {
           stops={stops}
           heading={heading}
           face={face}
+          faceFeatures={faceFeatures}
           location={location}
           onRecap={() =>
             recap(
@@ -502,9 +512,11 @@ export default function App() {
       {faceOpen && (
         <FaceCapture
           mode={face ? 'change' : 'create'}
-          onCapture={(img) => {
+          onCapture={(img, features) => {
             setFace(img);
             store.set('vysta.face', img);
+            setFaceFeatures(features);
+            store.set('vysta.faceFeatures', JSON.stringify(features));
             setFaceOpen(false);
           }}
           onClose={() => setFaceOpen(false)}
@@ -561,6 +573,7 @@ export default function App() {
             setAnswerLanguage(nextLanguage);
           }}
           face={face}
+          faceFeatures={faceFeatures}
           onFace={() => setFaceOpen(true)}
           onClose={() => {
             if (welcome) store.set('vysta.onboarded', '1');
