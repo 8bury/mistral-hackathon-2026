@@ -1,5 +1,7 @@
 import { useId } from 'react';
 
+import type { FaceFeatures } from '../faceFeatures';
+
 /**
  * Crossy Road-style figurines for the four guide modes.
  * Chunky voxel proportions: big blocky head, stubby limbs, flat colours,
@@ -19,6 +21,9 @@ interface Props {
   id: FigurineId;
   /** Front-camera snapshot used as the face of the "generic" (You) figurine. */
   faceImage?: string | null;
+  /** Analyzed facial features — when present, "You" is drawn as a custom
+   *  character embodying them (skin, hair, glasses, facial hair, face shape). */
+  features?: FaceFeatures | null;
   size?: number;
 }
 
@@ -27,7 +32,7 @@ const SKIN = '#f0c39a';
 const SKIN_LIGHT = '#f6d3ab';
 const GLASSES = '#2b2f38';
 
-export default function Figurine({ id, faceImage, size = 44 }: Props) {
+export default function Figurine({ id, faceImage, features, size = 44 }: Props) {
   return (
     <svg
       width={size}
@@ -39,7 +44,7 @@ export default function Figurine({ id, faceImage, size = 44 }: Props) {
       {id === 'historian' && <Historian />}
       {id === 'architect' && <Architect />}
       {id === 'child' && <Child />}
-      {id === 'generic' && <Generic faceImage={faceImage ?? null} />}
+      {id === 'generic' && <Generic faceImage={faceImage ?? null} features={features ?? null} />}
     </svg>
   );
 }
@@ -201,9 +206,29 @@ function Child() {
   );
 }
 
-/** Generic "You": hoodie avatar whose face window shows the front-camera snapshot. */
-function Generic({ faceImage }: { faceImage: string | null }) {
+/**
+ * Generic "You": hoodie avatar. When the face scan was analyzed, the
+ * figurine is personified from those features — skin tone, hair colour and
+ * style, glasses, facial hair and face shape — drawn in the same blocky
+ * character format as the guide figurines. Without features it falls back
+ * to the raw snapshot (or a default face) in the face window.
+ */
+function Generic({ faceImage, features }: { faceImage: string | null; features: FaceFeatures | null }) {
   const clipId = useId();
+  const skin = features?.skinTone ?? SKIN;
+  const hair = features?.hairColor ?? '#9aa0a6';
+  // Head geometry follows the detected face shape; legacy photo mode keeps
+  // the original fixed head.
+  const head = !features
+    ? { x: 20, y: 12, w: 24, h: 24, rx: 4 }
+    : features.faceShape === 'long'
+      ? { x: 20, y: 10, w: 24, h: 26, rx: 4 }
+      : features.faceShape === 'round'
+        ? { x: 20, y: 12, w: 24, h: 24, rx: 7 }
+        : { x: 20, y: 12, w: 24, h: 24, rx: 3 };
+  const eyeY = head.y + 10.5;
+  const mouthY = head.y + 18;
+  const chinY = head.y + head.h + 2; // beard spills a little below the chin, like the Historian
   return (
     <g stroke={OUTLINE} strokeWidth={2} strokeLinejoin="round">
       <Shadow rx={15} />
@@ -222,41 +247,120 @@ function Generic({ faceImage }: { faceImage: string | null }) {
       <line x1="32" y1="38" x2="32" y2="58" stroke="#48525f" />
       <path d="M26 52 H38" stroke="#48525f" fill="none" />
       {/* head */}
-      <rect x="20" y="12" width="24" height="24" rx="4" fill="#d8d8de" />
-      <Shade x={40} y={12} w={4} h={24} rx={2} />
-      {/* face: the captured photo embodied into the whole blocky head —
-          tinted toward the figurine palette, voxel-shaded, outlined like the others */}
-      <clipPath id={clipId}>
-        <rect x="21.5" y="13.5" width="21" height="21" rx="3" />
-      </clipPath>
-      {faceImage ? (
-        <g clipPath={`url(#${clipId})`}>
-          {/* the capture is already posterized + pixelated: it renders as a
-              flat cartoon face that belongs to the same art style */}
-          <image
-            href={faceImage}
-            x="21.5"
-            y="13.5"
-            width="21"
-            height="21"
-            preserveAspectRatio="xMidYMid slice"
-            style={{ imageRendering: 'pixelated' }}
+      <rect x={head.x} y={head.y} width={head.w} height={head.h} rx={head.rx} fill={features ? skin : '#d8d8de'} />
+      <Shade x={head.x + head.w - 4} y={head.y} w={4} h={head.h} rx={2} />
+      {features ? (
+        <>
+          {/* facial hair, drawn before the mouth so the smile stays readable */}
+          {features.facialHair !== 'none' && (
+            <g stroke="none" fill={hair}>
+              {(features.facialHair === 'beard' || features.facialHair === 'goatee') && (
+                <path
+                  d={`M${head.x + 4} ${head.y + 14} H${head.x + head.w - 4} V${chinY - 4} Q${head.x + head.w - 4} ${chinY} 32 ${chinY} Q${head.x + 4} ${chinY} ${head.x + 4} ${chinY - 4} Z`}
+                />
+              )}
+              {features.facialHair === 'beard' && <ellipse cx="32" cy={chinY - 3} rx="7" ry="3.2" />}
+              {features.facialHair === 'goatee' && <ellipse cx="32" cy={chinY - 2} rx="3.2" ry="3.6" />}
+              {features.facialHair !== 'none' && (
+                <path d={`M27 ${mouthY - 2.6} Q32 ${mouthY + 0.6} 37 ${mouthY - 2.6} Q32 ${mouthY - 1} 27 ${mouthY - 2.6} Z`} />
+              )}
+            </g>
+          )}
+          {/* eyes + brows */}
+          <circle cx="28" cy={eyeY} r="1.7" fill="#20242e" stroke="none" />
+          <circle cx="36" cy={eyeY} r="1.7" fill="#20242e" stroke="none" />
+          <line x1="25.5" y1={eyeY - 3.6} x2="30" y2={eyeY - 4} strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="34" y1={eyeY - 4} x2="38.5" y2={eyeY - 3.6} strokeWidth="1.6" strokeLinecap="round" />
+          {/* mouth (light ink over a beard) */}
+          <path
+            d={`M28.5 ${mouthY} Q32 ${mouthY + 2.6} 35.5 ${mouthY}`}
+            fill="none"
+            stroke={features.facialHair === 'beard' ? '#f6f6f6' : '#20242e'}
+            strokeWidth="1.6"
+            strokeLinecap="round"
           />
-          {/* voxel edge shading over the face, same as the other heads */}
-          <rect x="38.5" y="13.5" width="4" height="21" fill="rgba(0,0,0,0.10)" />
-        </g>
+          {/* glasses */}
+          {features.glasses === 'round' && (
+            <g fill="rgba(255,255,255,0.18)" stroke={GLASSES} strokeWidth="2.2">
+              <circle cx="28" cy={eyeY} r="5" />
+              <circle cx="36" cy={eyeY} r="5" />
+              <line x1="31" y1={eyeY - 0.6} x2="33" y2={eyeY - 0.6} />
+              <line x1="23" y1={eyeY} x2="20.5" y2={eyeY - 1} />
+              <line x1="41" y1={eyeY} x2="43.5" y2={eyeY - 1} />
+            </g>
+          )}
+          {features.glasses === 'square' && (
+            <g fill="rgba(255,255,255,0.18)" stroke={GLASSES} strokeWidth="2.2">
+              <rect x="23.5" y={eyeY - 3.8} width="8" height="7.5" rx="1" />
+              <rect x="32.5" y={eyeY - 3.8} width="8" height="7.5" rx="1" />
+              <line x1="31.5" y1={eyeY} x2="32.5" y2={eyeY} />
+              <line x1="23.5" y1={eyeY} x2="20.5" y2={eyeY - 1} />
+              <line x1="40.5" y1={eyeY} x2="43.5" y2={eyeY - 1} />
+            </g>
+          )}
+          {/* hair, in the detected colour + style */}
+          {features.hairStyle === 'short' && (
+            <g fill={hair} strokeWidth="1.6">
+              <rect x="19" y={head.y - 6} width="26" height="8" rx="3" />
+              <rect x="19" y={head.y + 1} width="3.4" height="5" rx="1.4" />
+              <rect x="41.6" y={head.y + 1} width="3.4" height="5" rx="1.4" />
+            </g>
+          )}
+          {features.hairStyle === 'flat' && (
+            <g fill={hair} strokeWidth="1.6">
+              <rect x="19" y={head.y - 7} width="26" height="9" rx="2" />
+              <rect x="19" y={head.y + 1} width="4" height="7" />
+              <rect x="41" y={head.y + 1} width="4" height="7" />
+            </g>
+          )}
+          {features.hairStyle === 'curly' && (
+            <g fill={hair} strokeWidth="1.6">
+              <circle cx="24" cy={head.y - 2} r="4.2" />
+              <circle cx="28.5" cy={head.y - 4} r="4.4" />
+              <circle cx="33" cy={head.y - 4.6} r="4.4" />
+              <circle cx="37.5" cy={head.y - 4} r="4.4" />
+              <circle cx="41" cy={head.y - 2} r="4.2" />
+              <rect x="20" y={head.y - 3} width="24" height="5" rx="2" />
+            </g>
+          )}
+          {/* bald: no hair drawn */}
+        </>
       ) : (
-        <g clipPath={`url(#${clipId})`} stroke="none">
-          <rect x="21.5" y="13.5" width="21" height="21" fill={SKIN} />
-          <circle cx="28" cy="22.5" r="1.7" fill="#20242e" />
-          <circle cx="36" cy="22.5" r="1.7" fill="#20242e" />
-          <path d="M28.5 28 Q 32 30.5 35.5 28" fill="none" stroke="#20242e" strokeWidth="1.6" strokeLinecap="round" />
-        </g>
+        <>
+          {/* legacy: the captured photo embodied into the face window —
+              posterized + pixelated, so it renders as a flat cartoon face */}
+          <clipPath id={clipId}>
+            <rect x="21.5" y="13.5" width="21" height="21" rx="3" />
+          </clipPath>
+          {faceImage ? (
+            <g clipPath={`url(#${clipId})`}>
+              <image
+                href={faceImage}
+                x="21.5"
+                y="13.5"
+                width="21"
+                height="21"
+                preserveAspectRatio="xMidYMid slice"
+                style={{ imageRendering: 'pixelated' }}
+              />
+              <rect x="38.5" y="13.5" width="4" height="21" fill="rgba(0,0,0,0.10)" />
+            </g>
+          ) : (
+            <g clipPath={`url(#${clipId})`} stroke="none">
+              <rect x="21.5" y="13.5" width="21" height="21" fill={SKIN} />
+              <circle cx="28" cy="22.5" r="1.7" fill="#20242e" />
+              <circle cx="36" cy="22.5" r="1.7" fill="#20242e" />
+              <path d="M28.5 28 Q 32 30.5 35.5 28" fill="none" stroke="#20242e" strokeWidth="1.6" strokeLinecap="round" />
+            </g>
+          )}
+          {/* same blocky outline as every other figurine face */}
+          <rect x="21.5" y="13.5" width="21" height="21" rx="3" fill="none" stroke={OUTLINE} strokeWidth="1.8" />
+          {/* hair cap */}
+          <rect x="19" y="7" width="26" height="8" rx="3" fill="#9aa0a6" />
+        </>
       )}
-      {/* same blocky outline as every other figurine face */}
-      <rect x="21.5" y="13.5" width="21" height="21" rx="3" fill="none" stroke={OUTLINE} strokeWidth="1.8" />
-      {/* hair cap */}
-      <rect x="19" y="7" width="26" height="8" rx="3" fill="#9aa0a6" />
+      {/* head outline, same blocky stroke as the other figurines */}
+      {features && <rect x={head.x} y={head.y} width={head.w} height={head.h} rx={head.rx} fill="none" stroke={OUTLINE} strokeWidth="1.8" />}
     </g>
   );
 }
