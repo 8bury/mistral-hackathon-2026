@@ -1,13 +1,15 @@
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
 
+import { loadEnv } from './lib/env';
 import { askRouter } from './routes/ask';
+import { docsRouter } from './routes/docs';
 import { recapRouter } from './routes/recap';
 import { sttRouter } from './routes/stt';
 import { ttsRouter } from './routes/tts';
 
-dotenv.config();
+// Loads .env from cwd AND from the repo root (workspace scripts run with cwd=apps/server).
+loadEnv();
 
 const app = express();
 
@@ -18,6 +20,8 @@ app.use(express.json({ limit: '15mb' }));
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ai-city-guide-server' });
 });
+
+app.get('/docs', docsRouter);
 
 app.post('/api/ask', askRouter); // frame + question -> box/point + answer + audioUrl
 // STT receives a raw audio body (MediaRecorder blob), not JSON.
