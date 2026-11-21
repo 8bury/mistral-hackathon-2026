@@ -45,3 +45,10 @@ Next comes a bigger curated landmark database, shareable answer cards, and more 
   - Faster later: stream the answer and start speaking from the first sentence, and cache answers per landmark.
 - **"Is it all Mistral?"** "Yes. Voxtral to listen and speak, Mistral Medium to see, Mistral Large to explain. No other AI provider."
 - **"How does the You guide work?"** The visitor writes a short style note (up to 600 characters). It's passed to Mistral Large as style guidance only, so it can't override the facts, the length or the follow-up rules.
+
+---
+
+## Slide 13 · Try it yourself (after "Thank you")
+Advance to the QR slide and **leave it up for the whole Q&A**.
+"It's live right now: scan the code, allow the camera and mic, and point it at anything.
+Happy to take questions."
