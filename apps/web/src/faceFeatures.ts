@@ -14,6 +14,8 @@ export type HairStyle = 'short' | 'flat' | 'curly' | 'bald';
 export type GlassesStyle = 'none' | 'round' | 'square';
 export type FacialHair = 'none' | 'mustache' | 'beard' | 'goatee';
 export type FaceShape = 'round' | 'square' | 'long';
+export type BrowStyle = 'thin' | 'thick';
+export type MouthWidth = 'narrow' | 'normal' | 'wide';
 
 export interface FaceFeatures {
   /** Snapped to a flat cartoon palette so it matches the art style. */
@@ -23,11 +25,19 @@ export interface FaceFeatures {
   glasses: GlassesStyle;
   facialHair: FacialHair;
   faceShape: FaceShape;
+  /** Iris colour, snapped to a flat palette. */
+  eyeColor: string;
+  browStyle: BrowStyle;
+  mouthWidth: MouthWidth;
+  /** Shirt/hoodie colour sampled from the shoulders at the bottom of the scan. */
+  shirtColor: string;
 }
 
 /** Flat palettes — nearest match keeps the avatar in the blocky art style. */
 const SKIN_PALETTE = ['#f8d8b0', '#f0c39a', '#d9a06b', '#b97e4e', '#8d5a33', '#5f3d22'];
 const HAIR_PALETTE = ['#f2c14e', '#c98a3d', '#8a5a2e', '#5a3d24', '#2e2620', '#9aa0a6', '#e8e8e8'];
+const EYE_PALETTE = ['#2e2620', '#4a3728', '#6b4a2f', '#8a6d3b', '#3e6b4f', '#3f6d9e', '#7a8a99'];
+const CLOTH_PALETTE = ['#5f6b7a', '#3a6ea5', '#4a90d9', '#2c3e50', '#d62828', '#8e1b1b', '#3d6b4f', '#6b4a2f', '#e8e8e8', '#20242e'];
 
 type RGB = [number, number, number];
 
@@ -169,5 +179,74 @@ export function analyzeFace(img: ImageData): FaceFeatures {
     faceShape = ratio > 0.94 ? 'round' : ratio < 0.8 ? 'long' : 'square';
   }
 
-  return { skinTone, hairColor, hairStyle, glasses, facialHair, faceShape };
+  // Eye colour: the most saturated mid-dark pixels around the two eye
+  // centres are the irises.
+  const eyeSpots: RGB[] = [];
+  for (const [ex0, ex1] of [[0.36, 0.44], [0.56, 0.64]] as const) {
+    const xa = Math.floor(ex0 * w);
+    const xb = Math.ceil(ex1 * w);
+    const ya = Math.floor(0.39 * h);
+    const yb = Math.ceil(0.45 * h);
+    let best: RGB | null = null;
+    let bestSat = -1;
+    for (let y = ya; y < yb; y++) {
+      for (let x = xa; x < xb; x++) {
+        const i = (y * w + x) * 4;
+        const c: RGB = [d[i], d[i + 1], d[i + 2]];
+        const l = lum(c);
+        const s = sat(c);
+        if (l > 15 && l < skinL - 30 && s > 25 && s > bestSat) {
+          bestSat = s;
+          best = c;
+        }
+      }
+    }
+    if (best) eyeSpots.push(best);
+  }
+  const eyeColor = eyeSpots.length
+    ? nearest(
+        [0, 1, 2].map((k) => eyeSpots.reduce((a, c) => a + c[k], 0) / eyeSpots.length) as RGB,
+        EYE_PALETTE,
+      )
+    : '#2e2620';
+
+  // Brows: darkness of the band just above the eye line.
+  const browBand = region(d, w, h, 0.3, 0.31, 0.7, 0.36);
+  const browStyle: BrowStyle = skinL - lum(browBand) > 22 ? 'thick' : 'thin';
+
+  // Mouth width: longest dark run along the mouth line, relative to the
+  // detected face width (not the fixed strip, which is always "wide").
+  const faceW = found ? Math.max(1, maxX - minX) : w * 0.5;
+  const mxa = Math.floor(0.3 * w);
+  const mxb = Math.ceil(0.7 * w);
+  const mya = Math.floor(0.655 * h);
+  const myb = Math.ceil(0.695 * h);
+  const colDark: number[] = [];
+  for (let x = mxa; x < mxb; x++) {
+    let c = 0;
+    for (let y = mya; y < myb; y++) {
+      const i = (y * w + x) * 4;
+      if (lum([d[i], d[i + 1], d[i + 2]]) < skinL - 35) c++;
+    }
+    colDark.push(c);
+  }
+  let run = 0;
+  let bestRun = 0;
+  for (const c of colDark) {
+    if (c >= 2) {
+      run++;
+      bestRun = Math.max(bestRun, run);
+    } else {
+      run = 0;
+    }
+  }
+  const mouthFrac = bestRun / faceW;
+  const mouthWidth: MouthWidth = mouthFrac > 0.42 ? 'wide' : mouthFrac < 0.26 ? 'narrow' : 'normal';
+
+  // Shirt: shoulders fill the bottom of the centered crop — darker-half
+  // average avoids bright background at the edges.
+  const shirt = regionHair(d, w, h, 0.15, 0.86, 0.85, 0.99);
+  const shirtColor = nearest(shirt.avg, CLOTH_PALETTE);
+
+  return { skinTone, hairColor, hairStyle, glasses, facialHair, faceShape, eyeColor, browStyle, mouthWidth, shirtColor };
 }
