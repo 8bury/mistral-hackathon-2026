@@ -19,6 +19,9 @@ interface Props {
   onBackToLive: () => void;
   /** Open the phone gallery picker (image or video). */
   onGallery: () => void;
+  /** Mode row: open the map sheet / the walk recap. */
+  onMap: () => void;
+  onRecap: () => void;
 }
 
 /** Hold to talk, or quick-tap to toggle (easier while aiming the camera). */
@@ -27,6 +30,7 @@ export default function Controls(props: Props) {
   const downAt = useRef(0);
   const tapMode = useRef(false);
   const es = language === 'es';
+  const busy = phase === 'listening' || phase === 'thinking';
 
   const down = () => {
     if (phase === 'thinking') return;
@@ -55,21 +59,28 @@ export default function Controls(props: Props) {
       ? es ? 'Escuchando. Toca para terminar' : 'Listening. Tap to finish'
       : es ? 'Escuchando. Suelta para enviar' : 'Listening. Release to send',
     thinking: theme.thinking[language],
-    answer: es ? 'Mantén para preguntar otra cosa' : 'Hold to ask a follow-up',
+    answer: null,
   }[phase];
 
   return (
     <div className="controls">
       {answer}
-      <div className="dock">
-        <span className="dock__side">
-          {frozen && phase !== 'listening' && phase !== 'thinking' && (
-            <button className="pill-btn" onClick={props.onBackToLive}>
-              <Icon name="back" size={18} />
-              {es ? 'Cámara' : 'Camera'}
-            </button>
-          )}
-        </span>
+      {hint && (
+        <div className={`hint-pill hint-pill--${phase}`}>
+          <span className="hint-pill__dot" />
+          {hint}
+        </div>
+      )}
+      <div className="capsule">
+        {frozen && !busy ? (
+          <button className="capsule__side" onClick={props.onBackToLive} aria-label={es ? 'Volver a la cámara' : 'Back to camera'}>
+            <Icon name="back" size={22} />
+          </button>
+        ) : (
+          <span className="capsule__side is-idle" aria-hidden="true">
+            <Icon name="camera" size={22} />
+          </span>
+        )}
         <button
           className={`mic mic--${phase}`}
           style={{ ['--lvl' as string]: level.toFixed(3) }}
@@ -83,20 +94,21 @@ export default function Controls(props: Props) {
           <span className="mic__ring" />
           {phase === 'thinking' ? <span className="spinner" /> : <Icon name="mic" size={30} />}
         </button>
-        <span className="dock__side" style={{ justifyContent: 'flex-end' }}>
-          {phase !== 'listening' && phase !== 'thinking' && (
-            <button
-              className="icon-btn"
-              onClick={props.onGallery}
-              aria-label={es ? 'Abrir galería' : 'Open gallery'}
-              title={es ? 'Subir foto o vídeo' : 'Upload photo or video'}
-            >
-              <Icon name="gallery" size={20} />
-            </button>
-          )}
-        </span>
+        <button
+          className="capsule__side"
+          onClick={props.onGallery}
+          disabled={busy}
+          aria-label={es ? 'Abrir galería' : 'Open gallery'}
+          title={es ? 'Subir foto o vídeo' : 'Upload photo or video'}
+        >
+          <Icon name="gallery" size={22} />
+        </button>
       </div>
-      <div className="hint">{hint}</div>
+      <nav className={`modes ${busy ? 'is-hidden' : ''}`} aria-label={es ? 'Modos' : 'Modes'}>
+        <button onClick={props.onMap}>{es ? 'Mapa' : 'Map'}</button>
+        <button className="is-on" aria-current="page">{es ? 'Preguntar' : 'Ask'}</button>
+        <button onClick={props.onRecap}>{es ? 'Resumen' : 'Recap'}</button>
+      </nav>
     </div>
   );
 }

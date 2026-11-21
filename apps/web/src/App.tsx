@@ -6,7 +6,7 @@ import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
 import GuideSheet from './components/GuideSheet';
-import Compass from './components/Compass';
+import Recap from './components/Recap';
 import FaceCapture from './components/FaceCapture';
 import Figurine from './components/Figurines';
 import Icon from './components/Icon';
@@ -127,6 +127,9 @@ export default function App() {
   const [stops, setStops] = useState<Stop[]>([]);
   const [face, setFace] = useState<string | null>(() => store.get('vysta.face'));
   const [faceOpen, setFaceOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [recapOpen, setRecapOpen] = useState(false);
+  const recapCache = useRef<{ key: string; promise: Promise<string> } | null>(null);
   const { heading, needsPermission, requestMotion } = useHeading();
 
   // Gallery media: an uploaded photo becomes the frozen frame directly; a video
@@ -452,18 +455,48 @@ export default function App() {
           heading={heading}
           face={face}
           location={location}
-          onRecap={() =>
-            recap(
-              tourId,
-              stops.map((s) => ({ landmarkId: s.landmarkId, question: s.question, answerText: s.answer })),
-              language,
-            )
-          }
+          open={mapOpen}
+          onOpen={() => setMapOpen(true)}
+          onClose={() => setMapOpen(false)}
+          onRecap={() => {
+            setMapOpen(false);
+            setRecapOpen(true);
+          }}
+          needsPermission={needsPermission}
+          onEnableCompass={requestMotion}
         />
       )}
 
-      {phase !== 'listening' && phase !== 'thinking' && (
-        <Compass heading={heading} needsPermission={needsPermission} onEnable={requestMotion} />
+      {recapOpen && (
+        <Recap
+          stops={stops}
+          theme={theme}
+          language={language}
+          heading={heading}
+          face={face}
+          location={location}
+          loadRecap={() => {
+            // Reuse the summary while the walk is unchanged (Map ↔ Recap hops shouldn't re-ask the server).
+            const key = `${stops.length}:${language}`;
+            if (recapCache.current?.key !== key) {
+              const promise = recap(
+                tourId,
+                stops.map((s) => ({ landmarkId: s.landmarkId, question: s.question, answerText: s.answer })),
+                language,
+              );
+              promise.catch(() => {
+                if (recapCache.current?.promise === promise) recapCache.current = null;
+              });
+              recapCache.current = { key, promise };
+            }
+            return recapCache.current.promise;
+          }}
+          onOpenMap={() => {
+            setRecapOpen(false);
+            setMapOpen(true);
+          }}
+          onClose={() => setRecapOpen(false)}
+        />
       )}
 
       {faceOpen && (
@@ -498,6 +531,8 @@ export default function App() {
         onTalkEnd={handleTalkEnd}
         onBackToLive={backToLive}
         onGallery={() => galleryInputRef.current?.click()}
+        onMap={() => setMapOpen(true)}
+        onRecap={() => setRecapOpen(true)}
         answer={
           result && (
             <AnswerCard
