@@ -3,13 +3,56 @@ import path from 'node:path';
 
 import { repoRoot } from './env';
 
+export interface LandmarkLocation {
+  lat: number;
+  lng: number;
+  label?: string;
+}
+
 export interface Landmark {
   id: string;
   name: string;
   aliases: string[];
   facts: Record<string, string>;
+  /** Known physical spots — some landmarks (e.g. boundary markers) exist in many places. */
+  locations?: LandmarkLocation[];
   /** Ids of other landmarks physically close by (for "what's near" answers). */
   near?: string[];
+}
+
+const EARTH_RADIUS_M = 6371008.8;
+
+/** Great-circle distance between two lat/lng points, in metres (haversine). */
+export function haversineDistanceM(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
+}
+
+export interface LandmarkWithDistance {
+  landmark: Landmark;
+  /** Distance in metres to the landmark's nearest known location (Infinity if it has none). */
+  distanceM: number;
+}
+
+/** All landmarks sorted by their nearest known location's distance to `user`, nearest first. */
+export function landmarksByDistance(user: { lat: number; lng: number }): LandmarkWithDistance[] {
+  return allLandmarks()
+    .map((landmark) => {
+      const spots = landmark.locations ?? [];
+      const distanceM = spots.length
+        ? Math.min(...spots.map((spot) => haversineDistanceM(user, spot)))
+        : Number.POSITIVE_INFINITY;
+      return { landmark, distanceM };
+    })
+    .sort((a, b) => a.distanceM - b.distanceM);
 }
 
 let cache: Landmark[] | null = null;

@@ -21,12 +21,21 @@ export interface Point2D {
   y: number;
 }
 
+/** Latest GPS fix from the device; accuracy is the estimated radius in metres. */
+export interface UserLocation {
+  lat: number;
+  lng: number;
+  accuracy: number;
+}
+
 export interface AskRequest {
   frame: string; // base64 JPEG snapshot captured at push-to-talk
   question: string;
   persona: Persona;
   language: Language;
   tourId: string;
+  /** Latest GPS fix when the device granted location; null/absent otherwise. */
+  location?: UserLocation | null;
 }
 
 export interface AskResponse {
@@ -37,7 +46,8 @@ export interface AskResponse {
   audioUrl: string | null;
 }
 
-const MOCK = import.meta.env.VITE_MOCK_API !== 'false';
+// Mocks are OFF by default — opt in with VITE_MOCK_API=true.
+const MOCK = import.meta.env.VITE_MOCK_API === 'true';
 // Mock only /api/ask (agents not wired yet) while STT/TTS hit the real server.
 const MOCK_ASK = MOCK || import.meta.env.VITE_MOCK_ASK === 'true';
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';

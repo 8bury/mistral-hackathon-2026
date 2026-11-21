@@ -2,7 +2,7 @@ import { MODELS, mistral } from '../lib/mistral';
 import type { Landmark } from '../lib/landmarks';
 import { guideSystemPrompt } from '../lib/prompts';
 import type { HistoryEntry } from '../lib/store';
-import type { Language, Persona } from '../types';
+import type { Language, Persona, UserLocation } from '../types';
 
 export interface GuideInput {
   /** Data URLs of the tour's recent photos, oldest first. */
@@ -12,6 +12,8 @@ export interface GuideInput {
   language: Language;
   landmark: Landmark | null;
   history: HistoryEntry[];
+  /** Visitor's GPS fix, when known — gives the guide an orientation hint. */
+  location?: UserLocation | null;
 }
 
 export interface GuideResult {
@@ -36,7 +38,7 @@ function contentToText(content: unknown): string {
  * Web-search tool loop is a later step — keep the prototype simple.
  */
 export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
-  const { images, question, persona, language, landmark, history } = input;
+  const { images, question, persona, language, landmark, history, location } = input;
 
   const userContent = [
     ...images.map((url) => ({ type: 'image_url' as const, imageUrl: url })),
@@ -50,7 +52,7 @@ export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
     // mistral-large reasons by default and can starve the text chunk — keep it low.
     reasoningEffort: 'low',
     messages: [
-      { role: 'system', content: guideSystemPrompt({ persona, language, landmark }) },
+      { role: 'system', content: guideSystemPrompt({ persona, language, landmark, location }) },
       // Filter legacy/previously stored blank entries as well as new ones.
       ...history.filter((h) => h.content.trim().length > 0).map((h) => ({ role: h.role, content: h.content })),
       { role: 'user' as const, content: userContent },

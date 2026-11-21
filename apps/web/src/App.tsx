@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ask, speechToText, textToSpeech } from './api';
-import type { AskResponse, Language, Persona } from './api';
+import type { AskResponse, Language, Persona, UserLocation } from './api';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls from './components/Controls';
 import Overlay from './components/Overlay';
@@ -18,6 +18,9 @@ export default function App() {
   const frameRef = useRef<Frame | null>(null);
   // True while the TALK button is held; guards the getUserMedia race.
   const pressedRef = useRef(false);
+  // Latest GPS fix (accuracy in metres). Stays null until a fix arrives or when
+  // permission is denied — the app keeps working and simply sends no location.
+  const locationRef = useRef<UserLocation | null>(null);
 
   const [tourId] = useState(newTourId);
   const [persona, setPersona] = useState<Persona>('child');
@@ -35,6 +38,26 @@ export default function App() {
   const [frozenFrame, setFrozenFrame] = useState<Frame | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Track the visitor's position while the app runs so /api/ask can ground the
+  // answer in nearby landmarks. Non-fatal: any failure leaves locationRef null.
+  useEffect(() => {
+    if (!('geolocation' in navigator)) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(accuracy)) {
+          locationRef.current = { lat: latitude, lng: longitude, accuracy };
+        }
+      },
+      (err) => {
+        // Keep the last good fix on transient timeouts/unavailability; drop it only if revoked.
+        if (err.code === err.PERMISSION_DENIED) locationRef.current = null;
+      },
+      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 },
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
   const handleQuestion = useCallback(
     async (audio: Blob) => {
       setBusy(true);
@@ -47,6 +70,7 @@ export default function App() {
           persona: personaRef.current,
           language: languageRef.current,
           tourId,
+          location: locationRef.current,
         });
         setResult(res);
         // /api/ask returns audioUrl once wired; until then, speak the answer
