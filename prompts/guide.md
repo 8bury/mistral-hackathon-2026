@@ -17,6 +17,7 @@ System prompt template. Fill in `{{persona}}` and `{{language}}`:
 > - child: playful, short sentences, a sense of wonder (the "soldier" voice reads it aloud)
 > - architect: structure, materials, design intent
 > - historian: dates, patrons, why it matters
+> - you: the visitor writes their own style instructions (appended as `<visitor_style>`)
 > Max 3 sentences. Then, after a `FOLLOW_UPS:` line, suggest 3 short questions
 > the visitor might tap next, based on what you just said (shown as buttons in
 > the app, stripped from the spoken answer).

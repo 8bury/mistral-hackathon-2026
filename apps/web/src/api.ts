@@ -5,7 +5,7 @@
 // when the team agrees the contract, move them to packages/shared and import
 // from there in both web and server.
 
-export type Persona = 'child' | 'architect' | 'historian';
+export type Persona = 'child' | 'architect' | 'historian' | 'you';
 /** Language of the interface and its currently available translations. */
 export type Language = 'en' | 'es';
 /** `auto` follows the language of the visitor's latest question. */
@@ -35,6 +35,8 @@ export interface AskRequest {
   frame?: string; // optional after the first question in a tour
   question: string;
   persona: Persona;
+  /** Visitor-written style instructions, sent with the 'you' persona. */
+  customStyle?: string;
   /** Omit or send auto to follow the visitor's question language. */
   language?: AnswerLanguage;
   tourId: string;
@@ -182,12 +184,14 @@ function mockAnswer(persona: Persona, language: Language): string {
       child: '¡Mira! El dragón sostiene un escudo porque protege la City de Londres.',
       architect: 'El dragón sostiene un escudo: es el emblema heráldico de la City of London.',
       historian: 'Este dragón es el guardián de la City; el escudo recuerda su patronazgo histórico.',
+      you: 'Este dragón guarda la City de Londres; el escudo es su emblema.',
     }[persona];
   }
   return {
     child: 'Look! The dragon is holding a shield because it guards the City of London!',
     architect: 'The dragon holds a shield — it is the heraldic emblem of the City of London.',
     historian: 'This dragon is the guardian of the City; the shield recalls its historic patronage.',
+    you: 'This dragon guards the City of London; the shield is its emblem.',
   }[persona];
 }
 

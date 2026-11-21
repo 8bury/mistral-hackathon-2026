@@ -13,7 +13,7 @@ const API_BASE = 'https://api.mistral.ai/v1';
 const STT_MODEL = process.env.VOXTRAL_STT_MODEL ?? 'voxtral-mini-transcribe-3';
 const TTS_MODEL = process.env.VOXTRAL_TTS_MODEL ?? 'voxtral-mini-tts-3-0';
 
-export type Persona = 'child' | 'architect' | 'historian';
+export type Persona = 'child' | 'architect' | 'historian' | 'you';
 export type Language = 'en' | 'es';
 
 /**
@@ -27,11 +27,13 @@ const PERSONA_VOICES: Record<Language, Record<Persona, string>> = {
     child: process.env.VOICE_ID_CHILD ?? 'voice_1786', // Sky, English (UK)
     architect: process.env.VOICE_ID_ARCHITECT ?? 'voice_1788', // David, English (UK)
     historian: process.env.VOICE_ID_HISTORIAN ?? 'voice_3147', // Howard, English (UK)
+    you: process.env.VOICE_ID_YOU ?? 'voice_1788', // David, English (UK)
   },
   es: {
     child: process.env.VOICE_ID_ES ?? 'voice_483', // Elena, Spanish
     architect: process.env.VOICE_ID_ES ?? 'voice_483',
     historian: process.env.VOICE_ID_ES ?? 'voice_483',
+    you: process.env.VOICE_ID_ES ?? 'voice_483',
   },
 };
 

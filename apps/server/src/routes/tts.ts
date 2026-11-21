@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 
 import { Language, Persona, synthesizeSpeech, voiceFor } from '../voxtral';
 
-const PERSONAS: Persona[] = ['child', 'architect', 'historian'];
+const PERSONAS: Persona[] = ['child', 'architect', 'historian', 'you'];
 const LANGUAGES: Language[] = ['en', 'es'];
 
 /**
