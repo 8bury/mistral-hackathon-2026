@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ask, recap, speechToText, textToSpeech } from './api';
+import { ask, AskError, MOCK, recap, speechToText, textToSpeech } from './api';
 import type { AnswerLanguage, AskResponse, Language, Persona, UserLocation } from './api';
+import { analyzeFace, type FaceFeatures } from './faceFeatures';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
@@ -88,9 +89,17 @@ export default function App() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const frameRef = useRef<Frame | null>(null);
+  // Last frame the server has for this tour; follow-ups on it omit the image
+  // so the server reuses its grounding instead of re-running vision.
+  const sentFrameRef = useRef<string | null>(null);
   const pressedRef = useRef(false);
   const playerRef = useRef<HTMLAudioElement | null>(null);
   const ownedUrlRef = useRef<string | null>(null);
+  // Which persona the current audio was voiced with — if the user switches
+  // character, the answer is re-voiced so the voice always matches.
+  const audioPersonaRef = useRef<Persona | null>(null);
+  // Refs mirror the latest values so stable callbacks never go stale.
+  const resultRef = useRef<AskResponse | null>(null);
   const speakTimer = useRef<number>();
   // Latest GPS fix (accuracy in metres). Stays null until a fix arrives or when
   // permission is denied; the app keeps working and simply sends no location.
@@ -118,6 +127,7 @@ export default function App() {
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [result, setResult] = useState<AskResponse | null>(null);
+  resultRef.current = result;
   const [frozenFrame, setFrozenFrame] = useState<Frame | null>(null);
   const [flash, setFlash] = useState(0);
   const [speechMs, setSpeechMs] = useState(3000);
@@ -126,11 +136,43 @@ export default function App() {
   const [playKey, setPlayKey] = useState(0);
   const [stops, setStops] = useState<Stop[]>([]);
   const [face, setFace] = useState<string | null>(() => store.get('vysta.face'));
+  // Facial features extracted from the face scan; drives the personalized "You" figurine.
+  const [faceFeatures, setFaceFeatures] = useState<FaceFeatures | null>(() => {
+    try {
+      return JSON.parse(store.get('vysta.faceFeatures') ?? 'null') as FaceFeatures | null;
+    } catch {
+      return null;
+    }
+  });
   const [faceOpen, setFaceOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [recapOpen, setRecapOpen] = useState(false);
   const recapCache = useRef<{ key: string; promise: Promise<string> } | null>(null);
   const { heading, needsPermission, requestMotion } = useHeading();
+
+  // A face photo stored before feature analysis existed still gets a
+  // generated vector character: decode it once and derive the features.
+  useEffect(() => {
+    if (!face || faceFeatures) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, 256, 256);
+      const feats = analyzeFace(ctx.getImageData(0, 0, 256, 256));
+      setFaceFeatures(feats);
+      store.set('vysta.faceFeatures', JSON.stringify(feats));
+    };
+    img.src = face;
+    return () => {
+      cancelled = true;
+    };
+  }, [face, faceFeatures]);
 
   // Gallery media: an uploaded photo becomes the frozen frame directly; a video
   // plays as the scene and its current frame is captured when the user talks.
@@ -174,6 +216,7 @@ export default function App() {
   const discardAudio = () => {
     stopAudio();
     playerRef.current = null;
+    audioPersonaRef.current = null;
     if (ownedUrlRef.current) URL.revokeObjectURL(ownedUrlRef.current);
     ownedUrlRef.current = null;
   };
@@ -183,8 +226,40 @@ export default function App() {
     clearTimeout(speakTimer.current);
     speakTimer.current = window.setTimeout(() => setSpeaking(false), ms);
   };
+  /** (Re)generate the spoken answer with the given persona's voice and play it. */
+  const voiceWith = useCallback(async (text: string, voicePersona: Persona) => {
+    if (MOCK) return; // mock mode has no TTS; fakeSpeak covers the read-along UI
+    try {
+      const url = await textToSpeech(text, voicePersona, answerLanguageRef.current);
+      if (!url) return;
+      stopAudio();
+      const player = new Audio(url);
+      playerRef.current = player;
+      audioPersonaRef.current = voicePersona;
+      if (ownedUrlRef.current) URL.revokeObjectURL(ownedUrlRef.current);
+      ownedUrlRef.current = url;
+      player.addEventListener('play', () => setSpeaking(true));
+      player.addEventListener('pause', () => setSpeaking(false));
+      player.addEventListener('ended', () => setSpeaking(false));
+      await player.play().catch(() => setError('Tap anywhere to enable sound.'));
+    } catch (e) {
+      console.warn('[tts]', e);
+    }
+  }, []);
+  // Switching the guide character re-voices the current answer, so the voice
+  // always matches the selected persona (not just on the next question).
+  useEffect(() => {
+    const res = resultRef.current;
+    if (!res || audioPersonaRef.current === persona) return;
+    void voiceWith(res.answerText, persona);
+  }, [persona, voiceWith]);
   const replay = () => {
     setPlayKey((k) => k + 1);
+    // The stored audio may be in the previous character's voice — re-voice it.
+    if (resultRef.current && audioPersonaRef.current !== personaRef.current) {
+      void voiceWith(resultRef.current.answerText, personaRef.current);
+      return;
+    }
     const player = playerRef.current;
     if (player) {
       player.currentTime = 0;
@@ -198,14 +273,24 @@ export default function App() {
     async (question: string) => {
       setTranscript(question);
       setPhase('thinking');
-      const res = await ask({
-        frame: frameRef.current?.dataUrl ?? '',
+      const frameUrl = frameRef.current?.dataUrl;
+      const isNewFrame = !!frameUrl && frameUrl !== sentFrameRef.current;
+      const req = {
         question,
         persona: personaRef.current,
         language: answerLanguageRef.current,
         tourId,
         location: locationRef.current,
-      });
+      };
+      let res: AskResponse;
+      try {
+        res = await ask({ ...req, frame: isNewFrame ? frameUrl : undefined });
+      } catch (e) {
+        // Server lost the tour (restart / TTL): resend the photo once.
+        if (isNewFrame || !frameUrl || !(e instanceof AskError) || e.code !== 'missing_frame') throw e;
+        res = await ask({ ...req, frame: frameUrl });
+      }
+      sentFrameRef.current = frameUrl ?? sentFrameRef.current;
 
       let audioUrl = res.audioUrl ?? null;
       let ownsUrl = false;
@@ -233,10 +318,15 @@ export default function App() {
       setPhase('answer');
       navigator.vibrate?.([10, 40, 10]);
 
+      // The current answer is now voiced for this persona (or has no audio).
+      audioPersonaRef.current = personaRef.current;
       if (audioUrl) {
         const player = new Audio(audioUrl);
         playerRef.current = player;
-        if (ownsUrl) ownedUrlRef.current = audioUrl;
+        if (ownsUrl) {
+          if (ownedUrlRef.current) URL.revokeObjectURL(ownedUrlRef.current);
+          ownedUrlRef.current = audioUrl;
+        }
         player.addEventListener('loadedmetadata', () => {
           if (Number.isFinite(player.duration)) setSpeechMs(player.duration * 1000);
         });
@@ -253,9 +343,21 @@ export default function App() {
 
   const handleAudio = useCallback(
     async (audio: Blob) => {
+      // A quick tap or a failed mic yields no audio; /api/stt would 400 on it.
+      if (!MOCK && audio.size < 1000) {
+        setError(languageRef.current === 'es' ? 'Mantén pulsado el botón mientras hablas.' : 'Hold the button while you speak.');
+        setPhase('idle');
+        return;
+      }
       setPhase('thinking');
       try {
-        const question = await speechToText(audio, languageRef.current);
+        const question = (await speechToText(audio, languageRef.current)).trim();
+        // Silence transcribes to ''; /api/ask would 400 on an empty question.
+        if (!question) {
+          setError(languageRef.current === 'es' ? 'No te he oído. Mantén pulsado y vuelve a hablar.' : "I didn't catch that. Hold the button and try again.");
+          setPhase('idle');
+          return;
+        }
         await answerQuestion(question);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -298,7 +400,10 @@ export default function App() {
       .getUserMedia({ audio: true })
       .then((audioStream) => {
         if (!pressedRef.current) {
+          // Released before the mic opened: nothing was recorded.
           audioStream.getTracks().forEach((t) => t.stop());
+          setError(languageRef.current === 'es' ? 'Mantén pulsado el botón mientras hablas.' : 'Hold the button while you speak.');
+          setPhase('idle');
           return;
         }
         // Mic level for the ring animation.
@@ -333,8 +438,13 @@ export default function App() {
       })
       .catch(() => {
         pressedRef.current = false;
-        // No mic (desktop demo): fall through to the mock transcript path.
-        void handleAudio(new Blob());
+        if (MOCK) {
+          // No mic (desktop demo): fall through to the mock transcript path.
+          void handleAudio(new Blob());
+          return;
+        }
+        setError(languageRef.current === 'es' ? 'Micrófono no disponible. Permite el acceso al micrófono.' : 'Microphone unavailable. Allow microphone access for this site.');
+        setPhase('idle');
       });
   }, [handleAudio]);
 
@@ -454,6 +564,7 @@ export default function App() {
           stops={stops}
           heading={heading}
           face={face}
+          faceFeatures={faceFeatures}
           location={location}
           open={mapOpen}
           onOpen={() => setMapOpen(true)}
@@ -474,6 +585,7 @@ export default function App() {
           language={language}
           heading={heading}
           face={face}
+          faceFeatures={faceFeatures}
           location={location}
           loadRecap={() => {
             // Reuse the summary while the walk is unchanged (Map ↔ Recap hops shouldn't re-ask the server).
@@ -502,9 +614,11 @@ export default function App() {
       {faceOpen && (
         <FaceCapture
           mode={face ? 'change' : 'create'}
-          onCapture={(img) => {
+          onCapture={(img, features) => {
             setFace(img);
             store.set('vysta.face', img);
+            setFaceFeatures(features);
+            store.set('vysta.faceFeatures', JSON.stringify(features));
             setFaceOpen(false);
           }}
           onClose={() => setFaceOpen(false)}
@@ -543,7 +657,7 @@ export default function App() {
               playKey={playKey}
               speaking={speaking}
               question={transcript}
-              followUps={theme.followUps[language]}
+              followUps={result.followUps?.length ? result.followUps : theme.followUps[language]}
               onFollowUp={handleFollowUp}
               onReplay={replay}
               onStop={stopAudio}
@@ -563,6 +677,7 @@ export default function App() {
             setAnswerLanguage(nextLanguage);
           }}
           face={face}
+          faceFeatures={faceFeatures}
           onFace={() => setFaceOpen(true)}
           onClose={() => {
             if (welcome) store.set('vysta.onboarded', '1');

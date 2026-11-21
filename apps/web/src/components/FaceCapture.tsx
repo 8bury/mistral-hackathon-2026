@@ -1,9 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import { analyzeFace, type FaceFeatures } from '../faceFeatures';
+import Figurine from './Figurines';
 
 interface Props {
   /** 'create' the first time, 'change' when re-scanning an existing figurine. */
   mode: 'create' | 'change';
-  onCapture: (dataUrl: string) => void;
+  /** dataUrl of the posterized capture + the facial features extracted from it. */
+  onCapture: (dataUrl: string, features: FaceFeatures) => void;
   onClose: () => void;
   onError: (message: string) => void;
 }
@@ -11,10 +15,16 @@ interface Props {
 /**
  * Front-camera face scan for the editable "You" mode. A scan line sweeps the
  * live preview while the camera reads the face; Capture turns the centered
- * square snapshot into the figurine's face texture.
+ * square snapshot into facial features (skin tone, hair colour/style,
+ * glasses, facial hair, face shape, eyes, brows, mouth, shirt) and shows
+ * the "You" figurine generated from them — "Use this" commits it, "Retake"
+ * returns to the live camera.
  */
 export default function FaceCapture({ mode, onCapture, onClose, onError }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // The captured photo + extracted features, shown as a generated-figurine
+  // preview until the user confirms ("Use this") or retakes.
+  const [draft, setDraft] = useState<{ dataUrl: string; features: FaceFeatures } | null>(null);
   // Keep the latest callback in a ref so a new onError identity doesn't
   // restart the stream (App re-renders many times a second from the compass).
   const onErrorRef = useRef(onError);
@@ -104,6 +114,10 @@ export default function FaceCapture({ mode, onCapture, onClose, onError }: Props
       }
     }
     ctx.putImageData(img, 0, 0);
+    // Extract facial features from the posterized capture so the "You"
+    // figurine can be personified (skin, hair, glasses, facial hair, shape).
+    // analyzeFace is read-only — it never mutates the pixels.
+    const features = analyzeFace(img);
     // Pixelate: downscale to 64px and upscale with smoothing off -> chunky retro avatar.
     const small = document.createElement('canvas');
     small.width = 64;
@@ -116,20 +130,38 @@ export default function FaceCapture({ mode, onCapture, onClose, onError }: Props
       ctx.drawImage(small, 0, 0, 256, 256);
     }
     // PNG keeps the pixel edges crisp (JPEG would blur them).
-    onCapture(canvas.toDataURL('image/png'));
+    // Hold the capture as a draft: the dialog shows the figurine generated
+    // from the extracted features; only "Use this" commits it.
+    setDraft({ dataUrl: canvas.toDataURL('image/png'), features });
   };
 
   return (
     <div className="face" role="dialog" aria-label={mode === 'create' ? 'Create your figurine' : 'Change your figurine'}>
-      <h2 className="face__title">{mode === 'create' ? 'Make your figurine' : 'Change your figurine'}</h2>
-      <p className="face__sub">Center your face in the circle.</p>
-      <div className="face__lens">
+      <h2 className="face__title">{draft ? 'This is you' : mode === 'create' ? 'Make your figurine' : 'Change your figurine'}</h2>
+      <p className="face__sub">{draft ? 'Generated from your facial features.' : 'Center your face in the circle.'}</p>
+      {/* the lens stays mounted (hidden) during the preview so the live stream
+          survives "Retake" without re-acquiring the camera */}
+      <div className="face__lens" style={draft ? { display: 'none' } : undefined}>
         <video ref={videoRef} playsInline muted />
         <span className="face__scan" />
       </div>
+      {draft && (
+        <div className="face__preview">
+          <Figurine id="generic" faceImage={draft.dataUrl} features={draft.features} size={132} />
+        </div>
+      )}
       <div className="face__actions">
-        <button className="ghost-btn" onClick={onClose}>Cancel</button>
-        <button className="primary" onClick={capture}>Take photo</button>
+        {draft ? (
+          <>
+            <button className="ghost-btn" onClick={() => setDraft(null)}>Retake</button>
+            <button className="primary" onClick={() => onCapture(draft.dataUrl, draft.features)}>Use this</button>
+          </>
+        ) : (
+          <>
+            <button className="ghost-btn" onClick={onClose}>Cancel</button>
+            <button className="primary" onClick={capture}>Take photo</button>
+          </>
+        )}
       </div>
     </div>
   );

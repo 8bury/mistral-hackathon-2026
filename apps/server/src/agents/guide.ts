@@ -1,6 +1,6 @@
-import { MODELS, mistral } from '../lib/mistral';
+import { contentToText, MODELS, mistral } from '../lib/mistral';
 import type { Landmark } from '../lib/landmarks';
-import { guideSystemPrompt } from '../lib/prompts';
+import { FOLLOW_UPS_MARKER, guideSystemPrompt } from '../lib/prompts';
 import type { HistoryEntry } from '../lib/store';
 import type { Language, Persona, UserLocation } from '../types';
 
@@ -18,18 +18,37 @@ export interface GuideInput {
 
 export interface GuideResult {
   answerText: string;
+  /** Model-suggested next questions, tailored to this answer (may be empty). */
+  followUps: string[];
 }
 
-/** Content may be a string or an array of chunks; keep only real text chunks. */
-function contentToText(content: unknown): string {
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content
-      .filter((c) => typeof c === 'object' && c !== null && (c as { type?: string }).type === 'text')
-      .map((c) => String((c as { text: unknown }).text))
-      .join('');
-  }
-  return '';
+const MAX_FOLLOW_UPS = 3;
+
+/**
+ * Split the raw reply into the spoken answer and the suggested follow-ups.
+ * Tolerates markdown decoration around the marker (e.g. "**FOLLOW_UPS:**").
+ */
+export function splitFollowUps(raw: string): GuideResult {
+  const marker = FOLLOW_UPS_MARKER.replace(':', '');
+  const match = new RegExp(`^[\\s*_#>-]*${marker.replace('_', '[_ -]?')}[\\s*_]*:?[\\s*_]*`, 'im').exec(raw);
+  if (!match) return { answerText: raw.trim(), followUps: [] };
+  const answerText = raw.slice(0, match.index).trim();
+  const followUps = raw
+    .slice(match.index + match[0].length)
+    .split('\n')
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').replace(/^["“*]+|["”*]+$/g, '').trim())
+    .filter((q) => q.length > 0 && q.length <= 80)
+    .slice(0, MAX_FOLLOW_UPS);
+  return { answerText, followUps };
+}
+
+/** Mistral may expose a single `message` or a sequence in `messages`. */
+function choiceToText(choice: { message?: { content?: unknown }; messages?: Array<{ content?: unknown }> }): string {
+  const contents = [choice.message, ...(choice.messages ?? [])]
+    .filter((message): message is { content?: unknown } => !!message)
+    .map((message) => contentToText(message.content))
+    .filter(Boolean);
+  return contents.join('\n').trim();
 }
 
 /**
@@ -45,31 +64,45 @@ export async function answerQuestion(input: GuideInput): Promise<GuideResult> {
     { type: 'text' as const, text: question },
   ];
 
-  const res = await mistral().chat.complete({
-    model: MODELS.guide,
-    // Low variance plus a fixed seed keeps repeated questions stable while
-    // the message history still lets genuine follow-ups evolve naturally.
-    temperature: 0.2,
-    randomSeed: 42,
-    maxTokens: 500,
-    // mistral-large reasons by default and can starve the text chunk — keep it low.
-    reasoningEffort: 'low',
-    messages: [
-      { role: 'system', content: guideSystemPrompt({ persona, language, landmark, location }) },
-      // Filter legacy/previously stored blank entries as well as new ones.
-      ...history.filter((h) => h.content.trim().length > 0).map((h) => ({ role: h.role, content: h.content })),
-      { role: 'user' as const, content: userContent },
-    ],
-  });
+  const attempt = async (retry: boolean) => {
+    const res = await mistral().chat.complete({
+      model: MODELS.guide,
+      // Low variance plus a fixed seed keeps repeated questions stable while
+      // the message history still lets genuine follow-ups evolve naturally.
+      temperature: 0.2,
+      randomSeed: retry ? 43 : 42,
+      // Reasoning shares this budget with the answer: measured answers use up to
+      // ~700 tokens, so 500 cut them off mid-sentence. The retry gets more room.
+      maxTokens: retry ? 3000 : 1500,
+      // mistral-large reasons by default and can starve the text chunk — keep it low.
+      reasoningEffort: 'low',
+      messages: [
+        { role: 'system', content: guideSystemPrompt({ persona, language, landmark, location }) },
+        // Filter legacy/previously stored blank entries as well as new ones.
+        ...history.filter((h) => h.content.trim().length > 0).map((h) => ({ role: h.role, content: h.content })),
+        { role: 'user' as const, content: userContent },
+      ],
+    });
 
-  // SDK v3: choices[0].message, or choices[0].messages[0] in some response shapes.
-  const choice = res.choices[0] as unknown as {
-    message?: { content?: unknown };
-    messages?: Array<{ content?: unknown }>;
+    // SDK v3: choices[0].message, or choices[0].messages[0] in some response shapes.
+    const choice = res.choices[0] as unknown as {
+      message?: { content?: unknown };
+      messages?: Array<{ content?: unknown }>;
+      finishReason?: string;
+    };
+    return { text: choiceToText(choice ?? {}), truncated: choice?.finishReason === 'length' };
   };
-  const answerText = contentToText(choice?.message?.content ?? choice?.messages?.[0]?.content).trim();
-  if (!answerText) {
+
+  let { text: answerText, truncated } = await attempt(false);
+  if (!answerText || truncated) {
+    console.warn(`[guide] ${answerText ? 'truncated' : 'empty'} model response, retrying once`);
+    const second = await attempt(true);
+    // Prefer the retry; keep a cut-off first answer only if the retry came back empty.
+    if (second.text) answerText = second.text;
+  }
+  const result = splitFollowUps(answerText);
+  if (!result.answerText) {
     throw new Error('Guide model returned no text response; please retry the request.');
   }
-  return { answerText };
+  return result;
 }

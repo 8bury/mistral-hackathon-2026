@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { Language, UserLocation } from '../api';
+import type { FaceFeatures } from '../faceFeatures';
 import type { PersonaTheme } from '../personas';
 import type { Stop } from '../walk';
 import Figurine from './Figurines';
@@ -13,6 +14,7 @@ interface Props {
   language: Language;
   heading: number;
   face: string | null;
+  faceFeatures: FaceFeatures | null;
   location: UserLocation | null;
   /** Fetches the guide's written recap (api.recap). */
   loadRecap: () => Promise<string>;
@@ -31,7 +33,7 @@ function groupStops(stops: Stop[]): Stop[][] {
   return groups;
 }
 
-export default function Recap({ stops, theme, language, heading, face, location, loadRecap, onOpenMap, onClose }: Props) {
+export default function Recap({ stops, theme, language, heading, face, faceFeatures, location, loadRecap, onOpenMap, onClose }: Props) {
   const es = language === 'es';
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -103,7 +105,7 @@ export default function Recap({ stops, theme, language, heading, face, location,
             </div>
 
             <div className="recap-map">
-              <MapArt focusId={route.at(-1)?.id ?? null} span={420} labels={false} me={me} route={route} heading={heading} face={face} />
+              <MapArt focusId={route.at(-1)?.id ?? null} span={420} labels={false} me={me} route={route} heading={heading} face={face} faceFeatures={faceFeatures} />
               <button className="recap-map__open" onClick={onOpenMap}>
                 <Icon name="map" size={16} />
                 {es ? 'Abrir mapa' : 'Open map'}

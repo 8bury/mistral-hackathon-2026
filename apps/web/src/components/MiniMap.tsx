@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { Stop } from '../walk';
 
 import type { Language, UserLocation } from '../api';
+import type { FaceFeatures } from '../faceFeatures';
 import Compass from './Compass';
 import Figurine from './Figurines';
 import Icon from './Icon';
@@ -66,7 +67,7 @@ export const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: n
 };
 export const fmt = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
 
-export function MapArt({ focusId, span, labels, me, route, heading, face }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[]; heading: number; face: string | null }) {
+export function MapArt({ focusId, span, labels, me, route, heading, face, faceFeatures }: { focusId: string | null; span: number; labels: boolean; me: Me; route: Place[]; heading: number; face: string | null; faceFeatures: FaceFeatures | null }) {
   const ME = me;
   const focus = PLACES.find((p) => p.id === focusId) ?? ME;
   const order = (id: string) => route.findIndex((p) => p.id === id) + 1;
@@ -113,7 +114,7 @@ export function MapArt({ focusId, span, labels, me, route, heading, face }: { fo
           <circle r={labels ? 11 : 15} className="m-me__dot" />
           {labels && (
             <g transform="translate(-26 -66)">
-              <Figurine id="generic" faceImage={face} size={52} />
+              <Figurine id="generic" faceImage={face} features={faceFeatures} size={52} />
             </g>
           )}
         </g>
@@ -154,6 +155,8 @@ interface Props {
   stops: Stop[];
   heading: number;
   face: string | null;
+  /** Analyzed face-scan features for the personalized "You" figurine. */
+  faceFeatures: FaceFeatures | null;
   /** Live GPS fix; drawn on the map when it falls inside the mapped area. */
   location: UserLocation | null;
   /** The map sheet is controlled by the app (mode row + widget both open it). */
@@ -168,7 +171,7 @@ interface Props {
 
 /** Top-right "nearest landmark" widget on the camera, plus the full map sheet. */
 export default function MiniMap(props: Props) {
-  const { language, focusId, stops, heading, face, location, open } = props;
+  const { language, focusId, stops, heading, face, faceFeatures, location, open } = props;
   const [tab, setTab] = useState<'nearby' | 'walk'>('nearby');
   const [picked, setPicked] = useState<string | null>(null);
   const es = language === 'es';
@@ -204,7 +207,7 @@ export default function MiniMap(props: Props) {
 
       {open && (
         <div className="map-sheet">
-          <MapArt focusId={selected} span={560} labels me={me} route={route} heading={heading} face={face} />
+          <MapArt focusId={selected} span={560} labels me={me} route={route} heading={heading} face={face} faceFeatures={faceFeatures} />
           <div className="map-top">
             <div className="seg" role="tablist">
               <button role="tab" aria-selected={tab === 'nearby'} className={tab === 'nearby' ? 'is-on' : ''} onClick={() => setTab('nearby')}>

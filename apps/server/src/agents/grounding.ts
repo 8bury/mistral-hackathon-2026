@@ -1,4 +1,4 @@
-import { MODELS, mistral } from '../lib/mistral';
+import { contentToText, MODELS, mistral } from '../lib/mistral';
 import { matchLandmark } from '../lib/landmarks';
 import { groundingSystemPrompt } from '../lib/prompts';
 import type { Box2D, Point2D, UserLocation } from '../types';
@@ -57,6 +57,9 @@ export async function groundFrame(
     model: MODELS.grounding,
     temperature: 0,
     randomSeed: 42,
+    // Medium 3.5 only offers 'none' or 'high'; 'high' adds seconds before every
+    // answer and rejects temperature 0. The guide already does the reasoning.
+    reasoningEffort: 'none',
     maxTokens: 300,
     responseFormat: { type: 'json_object' },
     messages: [
@@ -77,7 +80,7 @@ export async function groundFrame(
   // SDK v3: choices[0].message, or choices[0].messages[0] when tools were involved.
   const choice = res.choices[0] as unknown as { message?: { content?: unknown }; messages?: Array<{ content?: unknown }> };
   const content = choice?.message?.content ?? choice?.messages?.[0]?.content;
-  const raw = typeof content === 'string' ? content : JSON.stringify(content ?? '');
+  const raw = contentToText(content);
   const parsed = extractJson(raw);
 
   const landmark = parsed ? matchLandmark(parsed.landmarkId as string | null) : null;
