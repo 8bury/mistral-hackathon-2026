@@ -124,7 +124,10 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
   });
-  if (!res.ok) throw new Error(`Ask failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null) as { message?: string; error?: string } | null;
+    throw new Error(body?.message ?? body?.error ?? `Ask failed: ${res.status}`);
+  }
   return res.json();
 }
 
