@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ask, recap, speechToText, textToSpeech } from './api';
-import type { AskResponse, Language, Persona, UserLocation } from './api';
+import type { AnswerLanguage, AskResponse, Language, Persona, UserLocation } from './api';
 import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
 import Controls, { type Phase } from './components/Controls';
@@ -57,10 +57,16 @@ export default function App() {
   const [tourId] = useState(newTourId);
   const [persona, setPersona] = useState<Persona>((store.get('vysta.persona') as Persona) ?? 'child');
   const [language, setLanguage] = useState<Language>((store.get('vysta.lang') as Language) ?? 'en');
+  // The display language has an English default, but that must not force an
+  // English guide answer. `auto` follows the language detected in the user's
+  // transcription; picking a language in the guide sheet is an override.
+  const [answerLanguage, setAnswerLanguage] = useState<AnswerLanguage>('auto');
   const personaRef = useRef(persona);
   const languageRef = useRef(language);
+  const answerLanguageRef = useRef(answerLanguage);
   personaRef.current = persona;
   languageRef.current = language;
+  answerLanguageRef.current = answerLanguage;
   const theme = personaById(persona);
 
   const [welcome, setWelcome] = useState(() => !store.get('vysta.onboarded'));
@@ -139,7 +145,7 @@ export default function App() {
         frame: frameRef.current?.dataUrl ?? '',
         question,
         persona: personaRef.current,
-        language: languageRef.current,
+        language: answerLanguageRef.current,
         tourId,
         location: locationRef.current,
       });
@@ -396,7 +402,10 @@ export default function App() {
           persona={persona}
           language={language}
           onPick={setPersona}
-          onLanguage={setLanguage}
+          onLanguage={(nextLanguage) => {
+            setLanguage(nextLanguage);
+            setAnswerLanguage(nextLanguage);
+          }}
           face={face}
           onFace={() => setFaceOpen(true)}
           onClose={() => {

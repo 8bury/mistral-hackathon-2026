@@ -6,7 +6,10 @@
 // from there in both web and server.
 
 export type Persona = 'child' | 'architect' | 'historian';
+/** Language of the interface and its currently available translations. */
 export type Language = 'en' | 'es';
+/** `auto` follows the language of the visitor's latest question. */
+export type AnswerLanguage = Language | 'auto' | string;
 
 /** Normalized 0..1000, Le Chonk convention. */
 export interface Box2D {
@@ -29,10 +32,11 @@ export interface UserLocation {
 }
 
 export interface AskRequest {
-  frame: string; // base64 JPEG snapshot captured at push-to-talk
+  frame?: string; // optional after the first question in a tour
   question: string;
   persona: Persona;
-  language: Language;
+  /** Omit or send auto to follow the visitor's question language. */
+  language?: AnswerLanguage;
   tourId: string;
   /** Latest GPS fix when the device granted location; null/absent otherwise. */
   location?: UserLocation | null;
@@ -100,8 +104,9 @@ let mockStep = -1;
 export async function ask(req: AskRequest): Promise<AskResponse> {
   if (MOCK_ASK) {
     await delay(900);
-    if (req.frame !== mockFrame) {
-      mockFrame = req.frame;
+    const frame = req.frame ?? '';
+    if (frame !== mockFrame) {
+      mockFrame = frame;
       mockStep = (mockStep + 1) % MOCK_WALK.length;
     }
     const landmarkId = MOCK_WALK[mockStep];
@@ -109,7 +114,7 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
       box: { x: 380, y: 300, width: 260, height: 320 },
       point: null,
       landmarkId,
-      answerText: landmarkId === 'dragon-boundary' ? mockAnswer(req.persona, req.language) : MOCK_FACTS[landmarkId][req.language],
+      answerText: landmarkId === 'dragon-boundary' ? mockAnswer(req.persona, mockLanguage(req.language)) : MOCK_FACTS[landmarkId][mockLanguage(req.language)],
       audioUrl: null,
     };
   }
@@ -167,4 +172,8 @@ function mockAnswer(persona: Persona, language: Language): string {
     architect: 'The dragon holds a shield — it is the heraldic emblem of the City of London.',
     historian: 'This dragon is the guardian of the City; the shield recalls its historic patronage.',
   }[persona];
+}
+
+function mockLanguage(language: AnswerLanguage | undefined): Language {
+  return language === 'es' ? 'es' : 'en';
 }
