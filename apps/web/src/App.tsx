@@ -1,42 +1,84 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ask, speechToText, textToSpeech } from './api';
+import { ask, recap, speechToText, textToSpeech } from './api';
 import type { AskResponse, Language, Persona, UserLocation } from './api';
+import AnswerCard from './components/AnswerCard';
 import CameraView, { type CameraHandle, type Frame } from './components/CameraView';
-import Controls from './components/Controls';
+import Controls, { type Phase } from './components/Controls';
+import GuideSheet from './components/GuideSheet';
+import Compass from './components/Compass';
+import FaceCapture from './components/FaceCapture';
+import Figurine from './components/Figurines';
+import Icon from './components/Icon';
+import { useHeading } from './hooks/useHeading';
+import MiniMap from './components/MiniMap';
 import Overlay from './components/Overlay';
+import { personaById } from './personas';
+import { cropThumb, type Stop } from './walk';
 
 function newTourId(): string {
   // crypto.randomUUID is undefined over plain HTTP (LAN dev server) — fall back.
   return crypto.randomUUID?.() ?? `tour-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+const landmarkName = (id?: string | null) =>
+  id ? id.replace(/[-_]/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : null;
+
+const store = {
+  get: (k: string) => {
+    try {
+      return localStorage.getItem(k);
+    } catch {
+      return null;
+    }
+  },
+  set: (k: string, v: string) => {
+    try {
+      localStorage.setItem(k, v);
+    } catch {
+      /* ignore */
+    }
+  },
+};
+
 export default function App() {
   const cameraRef = useRef<CameraHandle>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const frameRef = useRef<Frame | null>(null);
-  // True while the TALK button is held; guards the getUserMedia race.
   const pressedRef = useRef(false);
+  const playerRef = useRef<HTMLAudioElement | null>(null);
+  const ownedUrlRef = useRef<string | null>(null);
+  const speakTimer = useRef<number>();
   // Latest GPS fix (accuracy in metres). Stays null until a fix arrives or when
-  // permission is denied — the app keeps working and simply sends no location.
+  // permission is denied; the app keeps working and simply sends no location.
   const locationRef = useRef<UserLocation | null>(null);
 
   const [tourId] = useState(newTourId);
-  const [persona, setPersona] = useState<Persona>('child');
-  const [language, setLanguage] = useState<Language>('en');
-  // Refs mirror the latest picker values so stable callbacks never go stale.
-  const personaRef = useRef<Persona>(persona);
-  const languageRef = useRef<Language>(language);
+  const [persona, setPersona] = useState<Persona>((store.get('vysta.persona') as Persona) ?? 'child');
+  const [language, setLanguage] = useState<Language>((store.get('vysta.lang') as Language) ?? 'en');
+  const personaRef = useRef(persona);
+  const languageRef = useRef(language);
   personaRef.current = persona;
   languageRef.current = language;
+  const theme = personaById(persona);
 
-  const [recording, setRecording] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [welcome, setWelcome] = useState(() => !store.get('vysta.onboarded'));
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [result, setResult] = useState<AskResponse | null>(null);
   const [frozenFrame, setFrozenFrame] = useState<Frame | null>(null);
+  const [flash, setFlash] = useState(0);
+  const [speechMs, setSpeechMs] = useState(3000);
+  const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playKey, setPlayKey] = useState(0);
+  const [stops, setStops] = useState<Stop[]>([]);
+  const [face, setFace] = useState<string | null>(() => store.get('vysta.face'));
+  const [faceOpen, setFaceOpen] = useState(false);
+  const { heading, needsPermission, requestMotion } = useHeading();
 
   // Track the visitor's position while the app runs so /api/ask can ground the
   // answer in nearby landmarks. Non-fatal: any failure leaves locationRef null.
@@ -58,151 +100,312 @@ export default function App() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  const handleQuestion = useCallback(
-    async (audio: Blob) => {
-      setBusy(true);
-      try {
-        const question = await speechToText(audio, languageRef.current);
-        setTranscript(question);
-        const res = await ask({
-          frame: frameRef.current?.dataUrl ?? '',
-          question,
-          persona: personaRef.current,
-          language: languageRef.current,
-          tourId,
-          location: locationRef.current,
+  useEffect(() => store.set('vysta.persona', persona), [persona]);
+  useEffect(() => store.set('vysta.lang', language), [language]);
+
+  const stopAudio = () => {
+    playerRef.current?.pause();
+    clearTimeout(speakTimer.current);
+    setSpeaking(false);
+  };
+  const discardAudio = () => {
+    stopAudio();
+    playerRef.current = null;
+    if (ownedUrlRef.current) URL.revokeObjectURL(ownedUrlRef.current);
+    ownedUrlRef.current = null;
+  };
+  /** No audio (mock / TTS failure): fake the speaking state for the read-along. */
+  const fakeSpeak = (ms: number) => {
+    setSpeaking(true);
+    clearTimeout(speakTimer.current);
+    speakTimer.current = window.setTimeout(() => setSpeaking(false), ms);
+  };
+  const replay = () => {
+    setPlayKey((k) => k + 1);
+    const player = playerRef.current;
+    if (player) {
+      player.currentTime = 0;
+      player.play().catch(() => {});
+    } else {
+      fakeSpeak(speechMs);
+    }
+  };
+
+  const answerQuestion = useCallback(
+    async (question: string) => {
+      setTranscript(question);
+      setPhase('thinking');
+      const res = await ask({
+        frame: frameRef.current?.dataUrl ?? '',
+        question,
+        persona: personaRef.current,
+        language: languageRef.current,
+        tourId,
+        location: locationRef.current,
+      });
+
+      let audioUrl = res.audioUrl ?? null;
+      let ownsUrl = false;
+      if (!audioUrl) {
+        try {
+          audioUrl = await textToSpeech(res.answerText, personaRef.current, languageRef.current);
+          ownsUrl = audioUrl !== null;
+        } catch (ttsErr) {
+          console.warn('[tts]', ttsErr);
+        }
+      }
+
+      // Fallback reading pace when there is no audio (mock / TTS failure).
+      setSpeechMs(res.answerText.split(/\s+/).length * 320);
+      setResult(res);
+      const frame = frameRef.current;
+      if (frame) {
+        void cropThumb(frame, res.box).then((thumb) =>
+          setStops((s) => [
+            ...s,
+            { id: `${Date.now()}`, time: Date.now(), thumb, question, answer: res.answerText, landmarkId: res.landmarkId },
+          ]),
+        );
+      }
+      setPhase('answer');
+      navigator.vibrate?.([10, 40, 10]);
+
+      if (audioUrl) {
+        const player = new Audio(audioUrl);
+        playerRef.current = player;
+        if (ownsUrl) ownedUrlRef.current = audioUrl;
+        player.addEventListener('loadedmetadata', () => {
+          if (Number.isFinite(player.duration)) setSpeechMs(player.duration * 1000);
         });
-        setResult(res);
-        // /api/ask returns audioUrl once wired; until then, speak the answer
-        // directly via Voxtral TTS so the voice loop works end-to-end.
-        // TTS failure is non-fatal: the text answer is already on screen.
-        let audioUrl = res.audioUrl ?? null;
-        let ownsUrl = false;
-        if (!audioUrl) {
-          try {
-            audioUrl = await textToSpeech(res.answerText, personaRef.current, languageRef.current);
-            ownsUrl = audioUrl !== null;
-          } catch (ttsErr) {
-            console.warn('[tts]', ttsErr);
-          }
-        }
-        if (audioUrl) {
-          const player = new Audio(audioUrl);
-          if (ownsUrl) {
-            // Object URLs pin the blob in memory until revoked.
-            const url = audioUrl;
-            const revoke = () => URL.revokeObjectURL(url);
-            player.addEventListener('ended', revoke, { once: true });
-            player.addEventListener('error', revoke, { once: true });
-          }
-          player.play().catch(() => setError('Audio playback was blocked — interact with the page to enable sound.'));
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Something went wrong');
-      } finally {
-        setBusy(false);
+        player.addEventListener('play', () => setSpeaking(true));
+        player.addEventListener('pause', () => setSpeaking(false));
+        player.addEventListener('ended', () => setSpeaking(false));
+        player.play().catch(() => setError('Tap anywhere to enable sound.'));
+      } else {
+        fakeSpeak(res.answerText.split(/\s+/).length * 320);
       }
     },
     [tourId],
   );
 
+  const handleAudio = useCallback(
+    async (audio: Blob) => {
+      setPhase('thinking');
+      try {
+        const question = await speechToText(audio, languageRef.current);
+        await answerQuestion(question);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Something went wrong');
+        setPhase(frameRef.current ? 'idle' : 'idle');
+      }
+    },
+    [answerQuestion],
+  );
+
   const handleTalkStart = useCallback(() => {
     setError(null);
-    setResult(null);
+    discardAudio();
     pressedRef.current = true;
 
-    // Snapshot on tap: freeze the frame at the moment the question starts.
-    const frame = cameraRef.current?.captureFrame() ?? null;
-    if (!frame) {
-      pressedRef.current = false;
-      setError('Could not capture a camera frame — check camera permission.');
-      return;
+    // Follow-up on the same frozen frame keeps the highlight context; a fresh
+    // ask from live view snapshots a new frame.
+    if (!frameRef.current) {
+      const frame = cameraRef.current?.captureFrame() ?? null;
+      if (!frame) {
+        pressedRef.current = false;
+        setError('Could not capture a camera frame. Check camera permission.');
+        return;
+      }
+      frameRef.current = frame;
+      setFrozenFrame(frame);
+      setFlash((n) => n + 1);
     }
-    frameRef.current = frame;
-    setFrozenFrame(frame);
+    setResult(null);
+    setTranscript('');
+    setPhase('listening');
 
     chunksRef.current = [];
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((audioStream) => {
-        // Released before the mic stream resolved — do not start recording.
         if (!pressedRef.current) {
           audioStream.getTracks().forEach((t) => t.stop());
           return;
         }
+        // Mic level for the ring animation.
+        const ac = new AudioContext();
+        const an = ac.createAnalyser();
+        an.fftSize = 256;
+        ac.createMediaStreamSource(audioStream).connect(an);
+        const buf = new Uint8Array(an.frequencyBinCount);
+        let raf = 0;
+        const tick = () => {
+          an.getByteTimeDomainData(buf);
+          let sum = 0;
+          for (const v of buf) sum += ((v - 128) / 128) ** 2;
+          setLevel(Math.min(1, Math.sqrt(sum / buf.length) * 4));
+          raf = requestAnimationFrame(tick);
+        };
+        tick();
+
         const recorder = new MediaRecorder(audioStream);
         recorderRef.current = recorder;
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) chunksRef.current.push(e.data);
         };
         recorder.onstop = () => {
+          cancelAnimationFrame(raf);
+          void ac.close();
+          setLevel(0);
           audioStream.getTracks().forEach((t) => t.stop());
-          void handleQuestion(new Blob(chunksRef.current, { type: recorder.mimeType }));
+          void handleAudio(new Blob(chunksRef.current, { type: recorder.mimeType }));
         };
         recorder.start();
-        setRecording(true);
       })
       .catch(() => {
         pressedRef.current = false;
-        setRecording(false);
-        setError('Microphone unavailable — grant mic permission over HTTPS.');
+        // No mic (desktop demo): fall through to the mock transcript path.
+        void handleAudio(new Blob());
       });
-  }, [handleQuestion]);
+  }, [handleAudio]);
 
   const handleTalkEnd = useCallback(() => {
     pressedRef.current = false;
-    setRecording(false);
     const recorder = recorderRef.current;
-    // Guard: on touch devices pointerup and pointerleave can both fire.
-    if (recorder && recorder.state === 'recording') {
-      recorder.stop();
-    }
+    if (recorder && recorder.state === 'recording') recorder.stop();
   }, []);
 
+  const handleFollowUp = (q: string) => {
+    discardAudio();
+    setResult(null);
+    answerQuestion(q).catch((e) => {
+      setError(e instanceof Error ? e.message : 'Something went wrong');
+      setPhase('idle');
+    });
+  };
+
+  const backToLive = () => {
+    discardAudio();
+    frameRef.current = null;
+    setFrozenFrame(null);
+    setResult(null);
+    setTranscript('');
+    setPhase('idle');
+  };
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#0b1020', overflow: 'hidden' }}>
-      <CameraView ref={cameraRef} onError={setError} />
-      {frozenFrame && (
-        <img
-          src={frozenFrame.dataUrl}
-          alt="Frozen camera frame"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      )}
+    <div className="app" data-persona={persona}>
+      <CameraView ref={cameraRef} onError={() => {}} />
+      {frozenFrame && <img className="frozen" src={frozenFrame.dataUrl} alt="Frozen camera frame" />}
+      {phase === 'idle' && <div className="reticle" />}
+      {phase === 'thinking' && <div className="scan" />}
+      {flash > 0 && <div key={flash} className="flash" />}
+
       <Overlay
         box={result?.box ?? null}
         point={result?.point ?? null}
         frameSize={frozenFrame ? { width: frozenFrame.width, height: frozenFrame.height } : null}
+        theme={theme}
+        label={landmarkName(result?.landmarkId)}
       />
-      {error && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 12,
-            left: 12,
-            right: 12,
-            padding: '10px 12px',
-            borderRadius: 8,
-            background: 'rgba(230,57,70,0.9)',
-            color: '#fff',
-            fontSize: 13,
+
+
+      <header className="topbar">
+        <button className="guide-chip" onClick={() => setSheetOpen(true)}>
+          <span className="guide-chip__avatar"><Figurine id={theme.id} size={28} /></span>
+          <span>{theme.name[language]}</span>
+          <span className="guide-chip__lang">{language.toUpperCase()}</span>
+          <Icon name="chevron" size={16} />
+        </button>
+      </header>
+
+      {phase !== 'listening' && phase !== 'thinking' && (
+        <MiniMap
+          language={language}
+          focusId={result?.landmarkId ?? null}
+          stops={stops}
+          heading={heading}
+          face={face}
+          onRecap={() =>
+            recap(
+              tourId,
+              stops.map((s) => ({ landmarkId: s.landmarkId, question: s.question, answerText: s.answer })),
+              language,
+            )
+          }
+        />
+      )}
+
+      {phase !== 'listening' && phase !== 'thinking' && (
+        <Compass heading={heading} needsPermission={needsPermission} onEnable={requestMotion} />
+      )}
+
+      {faceOpen && (
+        <FaceCapture
+          mode={face ? 'change' : 'create'}
+          onCapture={(img) => {
+            setFace(img);
+            store.set('vysta.face', img);
+            setFaceOpen(false);
           }}
-        >
+          onClose={() => setFaceOpen(false)}
+          onError={(m) => {
+            setError(m);
+            setFaceOpen(false);
+          }}
+        />
+      )}
+
+      {error && (
+        <div className="toast" onClick={() => setError(null)}>
           {error}
         </div>
       )}
+
       <Controls
-        persona={persona}
+        phase={phase}
+        theme={theme}
         language={language}
-        recording={recording}
-        busy={busy}
-        transcript={transcript}
-        answer={result?.answerText ?? ''}
-        onPersonaChange={setPersona}
-        onLanguageChange={setLanguage}
+        level={level}
+        frozen={frozenFrame !== null}
         onTalkStart={handleTalkStart}
         onTalkEnd={handleTalkEnd}
+        onBackToLive={backToLive}
+        answer={
+          result && (
+            <AnswerCard
+              text={result.answerText}
+              theme={theme}
+              language={language}
+              durationMs={speechMs}
+              playKey={playKey}
+              speaking={speaking}
+              question={transcript}
+              followUps={theme.followUps[language]}
+              onFollowUp={handleFollowUp}
+              onReplay={replay}
+              onStop={stopAudio}
+            />
+          )
+        }
       />
+
+      {(welcome || sheetOpen) && (
+        <GuideSheet
+          welcome={welcome}
+          persona={persona}
+          language={language}
+          onPick={setPersona}
+          onLanguage={setLanguage}
+          face={face}
+          onFace={() => setFaceOpen(true)}
+          onClose={() => {
+            if (welcome) store.set('vysta.onboarded', '1');
+            setWelcome(false);
+            setSheetOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
