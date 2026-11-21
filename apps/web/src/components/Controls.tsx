@@ -1,106 +1,89 @@
-import type { Language, Persona } from '../api';
+import { useRef, type ReactNode } from 'react';
+
+import type { Language } from '../api';
+import type { PersonaTheme } from '../personas';
+import Icon from './Icon';
+
+export type Phase = 'idle' | 'listening' | 'thinking' | 'answer';
 
 interface Props {
-  persona: Persona;
+  phase: Phase;
+  theme: PersonaTheme;
   language: Language;
-  recording: boolean;
-  busy: boolean;
-  transcript: string;
-  answer: string;
-  onPersonaChange: (p: Persona) => void;
-  onLanguageChange: (l: Language) => void;
+  level: number; // 0..1 mic level
+  frozen: boolean;
+  /** Answer panel, shown above the mic. */
+  answer?: ReactNode;
   onTalkStart: () => void;
   onTalkEnd: () => void;
+  onBackToLive: () => void;
 }
 
-const PERSONAS: { id: Persona; label: string }[] = [
-  { id: 'child', label: 'Child' },
-  { id: 'architect', label: 'Architect' },
-  { id: 'historian', label: 'Historian' },
-];
-
+/** Hold to talk, or quick-tap to toggle (easier while aiming the camera). */
 export default function Controls(props: Props) {
-  const {
-    persona,
-    language,
-    recording,
-    busy,
-    transcript,
-    answer,
-    onPersonaChange,
-    onLanguageChange,
-    onTalkStart,
-    onTalkEnd,
-  } = props;
+  const { phase, theme, language, level, frozen, answer } = props;
+  const downAt = useRef(0);
+  const tapMode = useRef(false);
+  const es = language === 'es';
+
+  const down = () => {
+    if (phase === 'thinking') return;
+    if (phase === 'listening' && tapMode.current) {
+      tapMode.current = false;
+      props.onTalkEnd();
+      return;
+    }
+    downAt.current = Date.now();
+    navigator.vibrate?.(15);
+    props.onTalkStart();
+  };
+  const up = () => {
+    if (phase !== 'listening' || tapMode.current) return;
+    if (Date.now() - downAt.current < 280) {
+      tapMode.current = true; // quick tap → keep listening until next tap
+      return;
+    }
+    navigator.vibrate?.(10);
+    props.onTalkEnd();
+  };
+
+  const hint = {
+    idle: es ? 'Mantén para preguntar por lo que ves' : 'Hold to ask about what you see',
+    listening: tapMode.current
+      ? es ? 'Escuchando. Toca para terminar' : 'Listening. Tap to finish'
+      : es ? 'Escuchando. Suelta para enviar' : 'Listening. Release to send',
+    thinking: theme.thinking[language],
+    answer: es ? 'Mantén para preguntar otra cosa' : 'Hold to ask a follow-up',
+  }[phase];
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        padding: '12px 16px calc(16px + env(safe-area-inset-bottom))',
-        background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
-        color: '#fff',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-      }}
-    >
-      <div style={{ display: 'flex', gap: 8 }}>
-        {PERSONAS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => onPersonaChange(p.id)}
-            style={chipStyle(persona === p.id)}
-          >
-            {p.label}
-          </button>
-        ))}
-        <div style={{ flex: 1 }} />
-        {(['en', 'es'] as Language[]).map((l) => (
-          <button key={l} onClick={() => onLanguageChange(l)} style={chipStyle(language === l)}>
-            {l.toUpperCase()}
-          </button>
-        ))}
+    <div className="controls">
+      {answer}
+      <div className="dock">
+        <span className="dock__side">
+          {frozen && phase !== 'listening' && phase !== 'thinking' && (
+            <button className="pill-btn" onClick={props.onBackToLive}>
+              <Icon name="back" size={18} />
+              {es ? 'Cámara' : 'Camera'}
+            </button>
+          )}
+        </span>
+        <button
+          className={`mic mic--${phase}`}
+          style={{ ['--lvl' as string]: level.toFixed(3) }}
+          onPointerDown={down}
+          onPointerUp={up}
+          onPointerCancel={up}
+          onContextMenu={(e) => e.preventDefault()}
+          aria-label={es ? 'Mantén para preguntar' : 'Hold to ask'}
+          disabled={phase === 'thinking'}
+        >
+          <span className="mic__ring" />
+          {phase === 'thinking' ? <span className="spinner" /> : <Icon name="mic" size={30} />}
+        </button>
+        <span className="dock__side" />
       </div>
-
-      {transcript && <div style={{ fontSize: 13, opacity: 0.85 }}>“{transcript}”</div>}
-      {answer && <div style={{ fontSize: 15, lineHeight: 1.4 }}>{answer}</div>}
-
-      <button
-        onPointerDown={onTalkStart}
-        onPointerUp={onTalkEnd}
-        onPointerLeave={onTalkEnd}
-        disabled={busy}
-        style={{
-          alignSelf: 'center',
-          width: 84,
-          height: 84,
-          borderRadius: '50%',
-          border: '4px solid #fff',
-          background: recording ? '#e63946' : 'rgba(255,255,255,0.25)',
-          color: '#fff',
-          fontSize: 13,
-          fontWeight: 600,
-          touchAction: 'none',
-        }}
-      >
-        {busy ? '…' : recording ? '●' : 'TALK'}
-      </button>
+      <div className="hint">{hint}</div>
     </div>
   );
-}
-
-function chipStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: '6px 12px',
-    borderRadius: 999,
-    border: '1px solid rgba(255,255,255,0.5)',
-    background: active ? '#ffd166' : 'rgba(0,0,0,0.35)',
-    color: active ? '#000' : '#fff',
-    fontSize: 13,
-    fontWeight: active ? 700 : 400,
-  };
 }
